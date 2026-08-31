@@ -100,3 +100,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const event = await prisma.event.update({ where: { id }, data });
   return Response.json({ event: { id: event.id, slug: event.slug, status: event.status } });
 }
+
+/** Hapus event — hanya DRAFT (event terpublikasi punya data peserta; hapus manual dulu) */
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const guard = await requireCapability(id, "CREATE_EVENT");
+  if (!guard.ok) return guardError(guard);
+
+  const event = await prisma.event.findUnique({ where: { id } });
+  if (!event) return guardError({ ok: false, status: 404, code: "EVENT_NOT_FOUND", message: "Event tidak ditemukan." });
+  if (event.status !== "DRAFT") {
+    return guardError({ ok: false, status: 409, code: "NOT_DRAFT", message: "Hanya event berstatus DRAFT yang bisa dihapus." });
+  }
+
+  // relasi anak sudah onDelete: Cascade di schema — hapus langsung
+  await prisma.event.delete({ where: { id } });
+  return Response.json({ ok: true });
+}

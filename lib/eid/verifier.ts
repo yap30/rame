@@ -78,37 +78,46 @@ export class EidVerifierAdapter implements VerifierAdapter {
     return (await res.json()) as T;
   }
 
-  /** Cari schema dokumen pertama yang tersedia untuk template */
+  /** Cari schema dokumen untuk template login — preferensi EID_Membership (dimiliki semua holder), fallback pertama */
   private async firstDocumentSchemaId(): Promise<string> {
     const body = await this.gateway<EidEnvelope>("/api/v1/verifier/document-schema");
-    const items = (body.data as { items?: unknown[] } | null)?.items ?? [];
-    const first = items[0] as { id?: string } | undefined;
-    if (!first?.id) throw new EidError(EidErrorCodes.SCHEMA_NOT_FOUND, "Tidak ada document schema tersedia di akun verifier.");
-    return first.id;
+    const items = (body.data as { items?: { id?: string; schema_title?: string; schema_name?: string }[] } | null)?.items ?? [];
+    const membership = items.find((s) => `${s.schema_title ?? ""} ${s.schema_name ?? ""}`.toLowerCase().includes("membership"));
+    const chosen = membership ?? items[0];
+    if (!chosen?.id) throw new EidError(EidErrorCodes.SCHEMA_NOT_FOUND, "Tidak ada document schema tersedia di akun verifier.");
+    return chosen.id;
   }
 
-  /** Pastikan template Login VC ada; buat bila belum (idempoten) */
+  /** Pastikan template Login VC ada & mengarah ke schema yang benar (idempoten, self-heal) */
   async ensureLoginTemplate(): Promise<string> {
     this.assertConfigured();
     if (this.cfg.verificationId) return this.cfg.verificationId;
     try {
+      const schemaId = await this.firstDocumentSchemaId();
+      const templateBody = {
+        name: TEMPLATE_NAME,
+        description: "RAME login via verifiable credential",
+        ttl: 5,
+        presentation_limit: 0,
+        expected_schemas: [{ schema_id: schemaId, mandatory: true, required_fields: ["subject_id", "email"] }],
+        custom_webhook_url: process.env.EID_VERIFIER_WEBHOOK_URL ?? "",
+        event_type: "LOGIN_VC",
+      };
       const list = await this.gateway<EidEnvelope>("/api/v1/verifier/verification-schema");
       const items = (list.data as { items?: { id?: string; name?: string; deleted_at?: string | null }[] } | null)?.items ?? [];
       const existing = items.find((t) => t.name === TEMPLATE_NAME && !t.deleted_at);
-      if (existing?.id) return existing.id;
+      if (existing?.id) {
+        // self-heal: selaraskan schema & webhook bila template lama salah (mis. terikat schema non-universal)
+        await this.gateway<EidEnvelope>(`/api/v1/verifier/verification-schema/${existing.id}`, {
+          method: "PUT",
+          body: JSON.stringify(templateBody),
+        }).catch(() => null);
+        return existing.id;
+      }
 
-      const schemaId = await this.firstDocumentSchemaId();
       const created = await this.gateway<EidEnvelope>("/api/v1/verifier/verification-schema", {
         method: "POST",
-        body: JSON.stringify({
-          name: TEMPLATE_NAME,
-          description: "RAME login via verifiable credential",
-          ttl: 5,
-          presentation_limit: 0,
-          expected_schemas: [{ schema_id: schemaId, mandatory: true, required_fields: ["subject_id", "email"] }],
-          custom_webhook_url: process.env.EID_VERIFIER_WEBHOOK_URL ?? "",
-          event_type: "LOGIN_VC",
-        }),
+        body: JSON.stringify(templateBody),
       });
       const id = String((created.data as { id?: string } | null)?.id ?? "");
       if (!id) throw new EidError(EidErrorCodes.PROVIDER_ERROR, "Gagal membuat template verifikasi.");

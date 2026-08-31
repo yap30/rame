@@ -203,7 +203,7 @@ r = await req("/api/organizer/events", { method: "POST", body: { name: `Event Ku
 const qev = r.data.event;
 check("event berbayar + kuota 1 dibuat", r.status === 200 && Boolean(qev?.id), `(${r.status})`);
 if (qev?.id) {
-  await req(`/api/organizer/events/${qev.id}/publish`, { method: "POST", body: JSON.stringify({ status: "PUBLISHED" }) });
+  await req(`/api/organizer/events/${qev.id}/publish`, { method: "POST", body: { status: "PUBLISHED" } });
   // peserta 1 (Putri) masuk
   r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "participant" } });
   r = await req(`/api/events/${qev.id}/join`, { method: "POST" });
@@ -222,11 +222,32 @@ if (qev?.id) {
   const wl = qbundle.data.event.waitlist?.[0];
   check("waitlist terlihat oleh EO", Boolean(wl), JSON.stringify(qbundle.data.event.waitlist));
   if (wl) {
-    r = await req(`/api/organizer/events/${qev.id}/waitlist/${wl.id}`, { method: "POST", body: JSON.stringify({ action: "approve" }) });
+    r = await req(`/api/organizer/events/${qev.id}/waitlist/${wl.id}`, { method: "POST", body: { action: "approve" } });
     check("approve -> JOINED", r.data?.status === "JOINED", `(${r.data?.status})`);
   }
   r = await req(`/api/events/${qev.id}`);
   check("setelah approve: confirmed 2, waitlist 0", r.data?.event?.confirmedCount === 2 && r.data?.event?.waitlistCount === 0, `(${r.data?.event?.confirmedCount}/${r.data?.event?.waitlistCount})`);
+}
+
+console.log("▶ 14. Hapus draft event (organizer)");
+r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "organizer" } });
+r = await req("/api/organizer/events", { method: "POST", body: { name: `Draft Hapus ${Date.now()}` } });
+const delEv = r.data.event;
+check("draft dibuat", r.status === 200 && Boolean(delEv?.id), `(${r.status})`);
+if (delEv?.id) {
+  r = await req(`/api/organizer/events/${delEv.id}`, { method: "DELETE" });
+  check("draft terhapus", r.data?.ok === true, `(${r.status} ${r.data?.error?.code ?? ""})`);
+  r = await req(`/api/organizer/events/${delEv.id}`, { method: "DELETE" });
+  check("hapus lagi -> 404", r.status === 404, `(${r.status})`);
+  // published tidak bisa dihapus
+  r = await req("/api/organizer/events", { method: "POST", body: { name: `Draft Publikasi ${Date.now()}` } });
+  const pubEv = r.data.event;
+  if (pubEv?.id) {
+    const pubRes = await req(`/api/organizer/events/${pubEv.id}/publish`, { method: "POST", body: { status: "PUBLISHED" } });
+    check("publish set PUBLISHED", pubRes.status === 200 && pubRes.data?.event?.status === "PUBLISHED", `(${pubRes.status} ${JSON.stringify(pubRes.data)})`);
+    r = await req(`/api/organizer/events/${pubEv.id}`, { method: "DELETE" });
+    check("event PUBLISHED tidak bisa dihapus (409)", r.status === 409, `(${r.status} ${r.data?.error?.code ?? ""})`);
+  }
 }
 
 console.log(`\n=== HASIL: ${pass} lulus, ${fail} gagal ===`);
