@@ -77,24 +77,31 @@ export function Nav() {
               {l.label}
             </Link>
           ))}
-          {me?.user?.role === "PARTICIPANT" ? (
-            <Link
-              href="/dashboard"
-              className={`rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/dashboard") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
-            >
-              Dashboard
-            </Link>
-          ) : !me?.user ? (
+          {me?.user ? (
+            <>
+              <Link
+                href="/events"
+                className={`rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/events") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
+              >
+                {t("nav.events")}
+              </Link>
+              <Link
+                href="/dashboard"
+                className={`rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/dashboard") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
+              >
+                {t("nav.dashboard")}
+              </Link>
+              <Link
+                href="/organizer"
+                className={`rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/organizer") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
+              >
+                <Sparkles className="mr-1 inline h-3.5 w-3.5" />
+                {t("org.createEvent")}
+              </Link>
+            </>
+          ) : (
             <Link href="/register" className="rounded-full px-4 py-2 text-sm font-medium text-ink/70 transition hover:bg-ink/5">
               Daftar
-            </Link>
-          ) : null}
-          {me?.user?.role === "ORGANIZER" && (
-            <Link
-              href="/organizer"
-              className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/organizer") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
-            >
-              <LayoutDashboard className="h-4 w-4" /> {t("nav.organizer")}
             </Link>
           )}
           {me?.user?.role === "ADMIN" && (
@@ -145,18 +152,21 @@ export function Nav() {
                 {l.label}
               </Link>
             ))}
-            {me?.user?.role === "PARTICIPANT" ? (
-              <Link href="/dashboard" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
-                Dashboard
-              </Link>
-            ) : !me?.user ? (
+            {me?.user ? (
+              <>
+                <Link href="/events" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
+                  {t("nav.events")}
+                </Link>
+                <Link href="/dashboard" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
+                  {t("nav.dashboard")}
+                </Link>
+                <Link href="/organizer" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
+                  ✨ {t("org.createEvent")}
+                </Link>
+              </>
+            ) : (
               <Link href="/register" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
                 Daftar
-              </Link>
-            ) : null}
-            {me?.user?.role === "ORGANIZER" && (
-              <Link href="/organizer" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
-                {t("nav.organizer")}
               </Link>
             )}
             {me?.user?.role === "ADMIN" && (

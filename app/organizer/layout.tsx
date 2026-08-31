@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { BarChart3, History, LayoutDashboard, Lightbulb, Map, QrCode, ScanLine, Settings, Sparkles, StampIcon, Trophy } from "lucide-react";
 import { api, useT } from "@/lib/client";
@@ -16,17 +16,39 @@ export default function OrganizerLayout({ children, params }: { children: React.
   const t = useT();
   const pathname = usePathname();
   const router = useRouter();
+  const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/api/auth/me") });
 
-  useEffect(() => {
-    if (!isLoading && (!data?.user || data.user.role !== "ORGANIZER")) {
-      router.push("/join?next=/organizer");
-    }
-  }, [data, isLoading, router]);
+  // pilih "Buat Event" dari menu = aktifkan mode penyelenggara (tanpa pemetaan role saat daftar)
+  const ensure = useMutation({
+    mutationFn: () => api("/api/organizer/ensure", { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me"] });
+      router.refresh();
+    },
+  });
 
-  if (isLoading || !data?.user || data.user.role !== "ORGANIZER") {
+  useEffect(() => {
+    if (isLoading) return;
+    if (!data?.user) {
+      router.push("/join?next=/organizer");
+      return;
+    }
+    if (data.user.role !== "ORGANIZER" && !ensure.isPending) ensure.mutate();
+  }, [data, isLoading, router, ensure]);
+
+  if (isLoading || !data?.user) {
     return <div className="rame-container flex justify-center py-24"><Spinner className="h-8 w-8" /></div>;
+  }
+  if (data.user.role !== "ORGANIZER") {
+    // sedang menyiapkan akun penyelenggara (ensure berjalan)
+    return (
+      <div className="rame-container flex max-w-md flex-col items-center gap-3 py-24 text-center">
+        <Spinner className="h-8 w-8" />
+        <div className="text-sm font-semibold text-ink/60">{t("org.ensuring")}</div>
+      </div>
+    );
   }
 
   // tabs event (jika di dalam /organizer/events/[id])

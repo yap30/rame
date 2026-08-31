@@ -250,5 +250,16 @@ if (delEv?.id) {
   }
 }
 
+console.log("▶ 15. Pilih jadi penyelenggara (ensure) — tanpa pemetaan role saat daftar");
+r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "participant" } });
+r = await req("/api/organizer/ensure", { method: "POST" });
+check("ensure -> ORGANIZER + org pribadi", r.data?.ok === true && r.data?.role === "ORGANIZER" && Boolean(r.data?.org?.id), JSON.stringify(r.data));
+r = await req("/api/organizer/ensure", { method: "POST" });
+check("ensure idempoten (ALREADY)", r.data?.status === "ALREADY", `(${r.data?.status})`);
+r = await req("/api/auth/me");
+check("sesi baru ber-role ORGANIZER", r.data?.user?.role === "ORGANIZER", `(${r.data?.user?.role})`);
+r = await req("/api/organizer/events", { method: "POST", body: { name: `Event EO Baru ${Date.now()}` } });
+check("langsung bisa buat event sbg EO", r.status === 200 && Boolean(r.data?.event?.id), `(${r.status})`);
+
 console.log(`\n=== HASIL: ${pass} lulus, ${fail} gagal ===`);
 process.exit(fail > 0 ? 1 : 0);
