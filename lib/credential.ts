@@ -7,6 +7,7 @@ import prisma from "./db";
 import { LOG_ACTIONS, CREDENTIAL_STATUS, ELIGIBILITY_POLICIES } from "./const";
 import { logEvent } from "./analytics";
 import { getIssuer } from "./eid";
+import type { IssuanceResult } from "./eid/types";
 
 export interface EligibilityResult {
   eligible: boolean;
@@ -141,15 +142,21 @@ export async function claimCredential(eventId: string, userId: string): Promise<
   const user = await prisma.user.findUnique({ where: { id: userId } });
   const ext = await prisma.externalIdentity.findFirst({ where: { userId, provider: "e.id" } });
 
-  const result = await getIssuer().submitClaim({
-    eventId,
-    eventName: (await prisma.event.findUnique({ where: { id: eventId } }))?.name ?? eventId,
-    participantSubject: ext?.providerSubject ?? user?.email ?? userId,
-    participantName: user?.name,
-    credentialTitle: config.title ?? "RAME Event Credential",
-    schemaId: config.schemaId ?? "rame-credential",
-    metadata: { eligibilityPolicy: config.eligibilityPolicy, policyValue: config.policyValue ?? {} },
-  });
+  let result: IssuanceResult;
+  try {
+    result = await getIssuer().submitClaim({
+      eventId,
+      eventName: (await prisma.event.findUnique({ where: { id: eventId } }))?.name ?? eventId,
+      participantSubject: ext?.providerSubject ?? user?.email ?? userId,
+      participantName: user?.name,
+      credentialTitle: config.title ?? "RAME Event Credential",
+      schemaId: config.schemaId ?? "rame-credential",
+      metadata: { eligibilityPolicy: config.eligibilityPolicy, policyValue: config.policyValue ?? {} },
+    });
+  } catch (err) {
+    // kegagalan provider → FAILED (bukan 500), detail aman disimpan
+    result = { ok: false, errorMessage: err instanceof Error ? err.message : "ISSUER_ERROR" };
+  }
 
   let finalStatus: string = CREDENTIAL_STATUS.PENDING;
   if (result.ok && result.providerReference) {

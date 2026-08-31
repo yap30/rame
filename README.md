@@ -36,35 +36,42 @@ Alur peserta untuk dicoba:
 
 Mode diatur `EID_MODE` di `.env`:
 
-| Mode | OAuth SSO | Issuer | Keterangan |
-|---|---|---|---|
-| `mock` (default) | simulasi (login Putri/Rara) | simulasi (klaim langsung ISSUED) | tanpa credentials |
-| `sandbox` | `https://api-dev.e.id` | `https://gateway-sandbox.e.id` | isi credentials |
-| `production` | `https://api-wallet.e.id` | `https://gateway.e.id` | — |
+| Mode | Login | Keterangan |
+|---|---|---|
+| `mock` (default) | simulasi (login Putri/Rara) | tanpa credentials |
+| `sandbox` | gateway-sandbox.e.id | isi credentials |
+| `production` | gateway.e.id (Login VC) + api-wallet.e.id (OAuth) | sudah terverifikasi live |
 
-### Aktifkan sandbox
+### Dua jalur autentikasi
 
-1. Daftar aplikasi OAuth di dashboard developer e.id → dapat `client_id` & `client_secret`.
-2. Isi `.env`:
-   ```env
-   EID_MODE=sandbox
-   EID_OAUTH_CLIENT_ID=xxx
-   EID_OAUTH_CLIENT_SECRET=xxx
-   EID_OAUTH_CALLBACK_URL=https://domain-anda/api/auth/eid/callback
-   # untuk kredensial (Issuer) — wajib onboarding via support@corp.e.id
-   EID_ISSUER_CLIENT_ID=xxx
-   EID_ISSUER_CLIENT_SECRET=xxx
-   EID_WEBHOOK_SECRET=xxx
-   ```
-3. Di portal Issuer e.id set `default_verify_url` → `https://domain-anda/api/eid/issuer/verify`
-   dan `default_webhook_url` → `https://domain-anda/api/eid/issuer/webhook`.
+1. **Login with VC (utama)** — Verifier API: `/join` menampilkan QR → holder scan
+   dengan aplikasi e.id → gateway kirim **presentation webhook** ke
+   `/api/eid/verifier/webhook` → status APPROVED → session RAME dibuat dari
+   `holder_account.did`. Fallback polling `GET /api/v1/verifier/presentation/session/:id`
+   bila webhook belum sampai (dev lokal). Template verifikasi auto-create
+   (`rame-login-vc`, event_type LOGIN_VC) bila `EID_VERIFIER_VERIFICATION_ID` kosong.
+2. **OAuth SSO (alternatif)** — redirect ke e.id, one-time code, token server-side.
 
-Arsitektur integrasi (blueprint §6): semua panggilan e.id diisolasi di
-[`lib/eid/`](lib/eid) — `oauth.ts` (flow OAuth SSO 4 langkah), `issuer.ts` (verification
-endpoint + webhook + auto-issuance), `mock.ts` (adapter demo), `index.ts` (factory).
-Business logic tidak pernah menyentuh URL/payload provider. Payload eksak verification
-endpoint & webhook adalah boundary provider — parsing defensif harus disesuaikan dengan
-referensi API live (blueprint §18).
+### Aktifkan produksi (terverifikasi 2026-08-31)
+
+```env
+EID_MODE=production
+EID_OAUTH_BASE_URL=https://api-wallet.e.id
+EID_OAUTH_CLIENT_ID=xxx
+EID_OAUTH_CLIENT_SECRET=xxx
+EID_OAUTH_CALLBACK_URL=https://domain-anda/api/auth/eid/callback
+EID_VERIFIER_BASE_URL=https://gateway.e.id
+EID_VERIFIER_CLIENT_ID=xxx   # bisa sama dengan OAuth
+EID_VERIFIER_CLIENT_SECRET=xxx
+EID_VERIFIER_VERIFICATION_ID=   # auto-create
+EID_VERIFIER_WEBHOOK_URL=https://domain-anda/api/eid/verifier/webhook
+```
+
+Catatan implementasi: endpoint & payload mengikuti **Postman Collection resmi e.id**
+(bukan ringkasan docs!) — OAuth `/api/v1.1/oauth/*`, Verifier `/api/v1/auth/*`,
+token di `data.token`, profil di `data.profile`. Semua panggilan diisolasi di
+[`lib/eid/`](lib/eid): `oauth.ts`, `verifier.ts`, `issuer.ts`, `mock.ts`, `index.ts`.
+Payload eksak webhook adalah boundary provider — parsing defensif (blueprint §18).
 
 ## 🐳 Deploy VPS (Docker + PostgreSQL)
 

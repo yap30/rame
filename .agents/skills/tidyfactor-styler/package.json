@@ -1,0 +1,67 @@
+{
+  "name": "@alwkala/tidyfactor-styler",
+  "version": "1.2.0",
+  "description": "TidyFactor Styler — Production Framework Styler, Section Redesign & RTL Polish Engine",
+  "main": "SKILL.md",
+  "bin": {
+    "tidyfactor-styler": "bin/add-skill.js",
+    "add-skill": "bin/add-skill.js",
+    "add-styler-skill": "bin/add-skill.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TidyFactor/Styler.git"
+  },
+  "keywords": [
+    "tidyfactor",
+    "tidyfactor-styler",
+    "production-design",
+    "ui-engineering",
+    "design-system",
+    "arabic-ui",
+    "rtl",
+    "tailwind",
+    "nextjs",
+    "php",
+    "agentic-ai",
+    "antigravity",
+    "claude-skill",
+    "anti-slop"
+  ],
+  "author": "TidyFactor & Alwkala <hello@tidyfactor.com> (https://alwkala.com)",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/TidyFactor/Styler/issues"
+  },
+  "homepage": "https://tidyfactor.com",
+  "scripts": {
+    "validate": "python tools/validate_skill.py",
+    "build": "node tools/build-skill.js",
+    "release": "python ../tools/release_skill.py ."
+  },
+  "dependencies": {},
+  "files": [
+    "SKILL.md",
+    "references",
+    "scripts",
+    "tools",
+    "bin",
+    "assets",
+    "brand.json",
+    ".tidyfactor",
+    "AGENTS.md",
+    "README.md",
+    "README.ar.md",
+    "README.fa.md",
+    "README.es.md",
+    "README.pt.md",
+    "README.zh.md",
+    "README.de.md",
+    "README.fr.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

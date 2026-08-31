@@ -1,11 +1,18 @@
 // ============================================================
-// RAME — adapter OAuth SSO e.id (implementasi nyata)
-// Flow sesuai docs.e.id/en/oauth-sso (v1.1, snake_case):
-//   1. GET /oauth/client/:client_id/:callback_url  (Get App Name)
-//   2. GET /oauth/verify?client_id=..&callback_url=..  (redirect browser)
+// RAME — adapter OAuth SSO e.id (implementasi nyata, kontrak v1.1)
+// Sumber: Postman Collection resmi e.id (docs.e.id/files/postman/
+// eid-oauth-sso.postman_collection.json) — LIVE REFERENCE.
+//
+// Base URL OAuth (sandbox): https://gateway-sandbox.e.id
+// Semua endpoint ber-prefix /api/v1.1/oauth/...
+//
+//   1. GET  /api/v1.1/oauth/client/{client_id}/{callback_url}  (Get App Name)
+//   2. GET  /api/v1.1/oauth/verify?client_id=&callback_url=    (redirect browser)
 //   3. callback?code=..  (one-time code)
-//   4. POST /oauth/get-token  (server-side exchange, client_secret)
-//   5. GET /oauth/get-profile?scope=email:profile  (Bearer token)
+//   4. POST /api/v1.1/oauth/get-token  JSON {client_id, client_secret, code, redirect_uri}
+//      -> {status,message,data:{token_type,token,expired_date}}
+//   5. GET  /api/v1.1/oauth/get-profile?scope=email:profile  (Bearer token)
+//      -> {status,message,data:{email, profile:{fullname,tier,phonenumber,avatar,...}}}
 // ============================================================
 import { OAuthAdapter, EidAppInfo, EidProfile } from "./types";
 import { EidError, EidErrorCodes, mapProviderError } from "./errors";
@@ -17,10 +24,21 @@ export interface OAuthConfig {
   callbackUrl: string;
 }
 
+/** Base URL default per mode bila env kosong */
+export function defaultOAuthBaseUrl(): string {
+  return "https://gateway-sandbox.e.id";
+}
+
+interface EidEnvelope {
+  status?: boolean;
+  message?: string;
+  data?: Record<string, unknown> | null;
+}
+
 export class EidOAuthAdapter implements OAuthAdapter {
   mode: "sandbox" | "production";
   constructor(private cfg: OAuthConfig) {
-    this.mode = cfg.baseUrl.includes("api-wallet") ? "production" : "sandbox";
+    this.mode = cfg.baseUrl.includes("gateway.e.id") && !cfg.baseUrl.includes("sandbox") ? "production" : "sandbox";
   }
 
   private assertConfigured() {
@@ -29,18 +47,28 @@ export class EidOAuthAdapter implements OAuthAdapter {
     }
   }
 
+  private async get<T = EidEnvelope>(path: string, headers: Record<string, string> = {}): Promise<T> {
+    const res = await fetch(`${this.cfg.baseUrl}${path}`, { headers: { accept: "application/json", ...headers }, cache: "no-store" });
+    if (!res.ok) throw mapProviderError({ status: res.status });
+    return (await res.json()) as T;
+  }
+
   async getAppInfo(): Promise<EidAppInfo> {
     this.assertConfigured();
     try {
-      const res = await fetch(`${this.cfg.baseUrl}/oauth/client/${encodeURIComponent(this.cfg.clientId)}/${encodeURIComponent(this.cfg.callbackUrl)}`, { cache: "no-store" });
-      if (!res.ok) throw mapProviderError({ status: res.status, code: "OAUTH.CLIENT_NOT_FOUND" }, EidErrorCodes.CLIENT_NOT_FOUND);
-      const data = (await res.json()) as { app_name?: string; appName?: string; icon_url?: string; iconUrl?: string; scopes?: string[] };
+      const env = await this.get<EidEnvelope>(
+        `/api/v1.1/oauth/client/${encodeURIComponent(this.cfg.clientId)}/${encodeURIComponent(this.cfg.callbackUrl)}`,
+      );
+      const data = env.data ?? {};
       return {
-        appName: data.app_name ?? data.appName ?? "e.id",
-        iconUrl: data.icon_url ?? data.iconUrl,
-        scopes: data.scopes ?? ["profile"],
+        appName: String(data.app_name ?? "e.id"),
+        iconUrl: typeof data.icon_url === "string" ? data.icon_url : undefined,
+        scopes: Array.isArray(data.scopes) ? (data.scopes as string[]) : ["profile"],
       };
     } catch (err) {
+      if (err instanceof EidError && err.code === EidErrorCodes.PROVIDER_ERROR) {
+        throw new EidError(EidErrorCodes.CLIENT_NOT_FOUND, "Client e.id tidak terdaftar untuk callback ini (OAUTH.CLIENT_NOT_FOUND).", 404);
+      }
       if (err instanceof EidError) throw err;
       throw mapProviderError(err);
     }
@@ -53,16 +81,16 @@ export class EidOAuthAdapter implements OAuthAdapter {
       callback_url: this.cfg.callbackUrl,
       state,
     });
-    return `${this.cfg.baseUrl}/oauth/verify?${params.toString()}`;
+    return `${this.cfg.baseUrl}/api/v1.1/oauth/verify?${params.toString()}`;
   }
 
   async exchangeCode(code: string): Promise<{ token: string; profile: EidProfile }> {
     this.assertConfigured();
     try {
-      const tokenRes = await fetch(`${this.cfg.baseUrl}/oauth/get-token`, {
+      const tokenRes = await fetch(`${this.cfg.baseUrl}/api/v1.1/oauth/get-token`, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
+        headers: { "Content-Type": "application/json", accept: "application/json" },
+        body: JSON.stringify({
           client_id: this.cfg.clientId,
           client_secret: this.cfg.clientSecret,
           code,
@@ -71,28 +99,41 @@ export class EidOAuthAdapter implements OAuthAdapter {
         cache: "no-store",
       });
       if (!tokenRes.ok) {
-        const body = (await tokenRes.json().catch(() => ({}))) as { code?: string };
-        throw mapProviderError({ status: tokenRes.status, code: body.code ?? "INVALID_OR_EXPIRED_CODE" }, EidErrorCodes.INVALID_CODE);
+        const body = (await tokenRes.json().catch(() => ({}))) as EidEnvelope;
+        const msg = body.message ?? "";
+        if (msg.includes("INVALID_OR_EXPIRED_CODE")) {
+          throw new EidError(EidErrorCodes.INVALID_CODE, "Kode otorisasi tidak valid atau kedaluwarsa.", tokenRes.status);
+        }
+        if (msg.includes("INVALID_CLIENT_CREDENTIALS")) {
+          throw new EidError(EidErrorCodes.UNAUTHORIZED, "Credentials e.id ditolak provider.", tokenRes.status);
+        }
+        throw mapProviderError({ status: tokenRes.status });
       }
-      const tokenData = (await tokenRes.json()) as { token?: string; access_token?: string; accessToken?: string };
-      const token = tokenData.token ?? tokenData.access_token ?? tokenData.accessToken;
+      const tokenBody = (await tokenRes.json()) as EidEnvelope;
+      const data = tokenBody.data ?? {};
+      const token = String(data.token ?? "");
       if (!token) throw new EidError(EidErrorCodes.PROVIDER_ERROR, "Token tidak ditemukan di respons provider.");
 
-      const profileRes = await fetch(`${this.cfg.baseUrl}/oauth/get-profile?scope=email:profile`, {
-        headers: { Authorization: `Bearer ${token}` },
+      // profil dengan scope email:profile
+      const profileRes = await fetch(`${this.cfg.baseUrl}/api/v1.1/oauth/get-profile?scope=email:profile`, {
+        headers: { Authorization: `Bearer ${token}`, accept: "application/json" },
         cache: "no-store",
       });
       if (!profileRes.ok) throw mapProviderError({ status: profileRes.status }, EidErrorCodes.UNAUTHORIZED);
-      const raw = (await profileRes.json()) as Record<string, unknown>;
+      const profileBody = (await profileRes.json()) as EidEnvelope;
+      const pd = (profileBody.data ?? {}) as { email?: string; profile?: { fullname?: string; phonenumber?: string; tier?: number; avatar?: string } };
+
+      const email = pd.email ?? "";
+      const p = pd.profile ?? {};
+      const subject = email || `eid:${String(p.phonenumber ?? "")}` || `eid:${this.cfg.clientId}:${token.slice(0, 8)}`;
 
       const profile: EidProfile = {
-        subject: String(raw.sub ?? raw.did ?? raw.id ?? raw.user_id ?? raw.subject ?? ""),
-        email: typeof raw.email === "string" ? raw.email : undefined,
-        name: typeof raw.name === "string" ? raw.name : typeof raw.full_name === "string" ? String(raw.full_name) : undefined,
-        trustLevel: typeof raw.trust_level === "string" ? String(raw.trust_level) : undefined,
-        raw,
+        subject,
+        email: email || undefined,
+        name: p.fullname || undefined,
+        trustLevel: typeof p.tier === "number" ? `Tier ${p.tier}` : undefined,
+        raw: profileBody as unknown as Record<string, unknown>,
       };
-      if (!profile.subject) throw new EidError(EidErrorCodes.PROVIDER_ERROR, "Profil e.id tidak memiliki subject (DID).");
       return { token, profile };
     } catch (err) {
       if (err instanceof EidError) throw err;

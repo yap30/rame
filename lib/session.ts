@@ -3,9 +3,16 @@
 // ============================================================
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import type { NextRequest } from "next/server";
 
 export const SESSION_COOKIE = "rame_session";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 hari
+
+/** Flag Secure mengikuti protokol request (localhost HTTP tetap bisa) */
+export function isSecureRequest(req?: NextRequest): boolean {
+  if (req) return new URL(req.url).protocol === "https:";
+  return process.env.NODE_ENV === "production";
+}
 
 export interface SessionPayload {
   sub: string; // userId

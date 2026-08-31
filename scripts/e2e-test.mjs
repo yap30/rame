@@ -129,5 +129,30 @@ console.log("▶ 10. RBAC: participant akses organizer -> 401/403");
 r = await req(`/api/organizer/events/${ev.id}/analytics`);
 check("ditolak", r.status === 401 || r.status === 403, `(${r.status})`);
 
+console.log("▶ 11. Login with VC (Verifier e.id)");
+r = await req("/api/auth/eid/vc/start", { method: "POST" });
+check("vc start -> QR dibuat", r.status === 200 && r.data?.ok && r.data?.qr?.startsWith("data:image/png"), `(${r.status})`);
+const vcSid = r.data?.sessionId;
+check("vc session id ada", Boolean(vcSid));
+if (vcSid) {
+  if (r.data?.mode === "mock") {
+    r = await req("/api/auth/eid/vc/mock-approve", { method: "POST", body: { sid: vcSid } });
+    check("mock approve", r.status === 200 && r.data?.status === "APPROVED", `(${r.status})`);
+  } else {
+    // mode nyata: kirim webhook sintetis APPROVED (menguji receiver + alur session)
+    r = await req("/api/eid/verifier/webhook", {
+      method: "POST",
+      body: { event_type: "LOGIN_VC", session_id: vcSid, status: "APPROVED", holder_account: { did: "did:eid:e2e-holder", username: "E2E Holder" } },
+    });
+    check("webhook APPROVED diterima", r.status === 200 && r.data?.status === "APPROVED", `(${r.status} · ${r.data?.status})`);
+  }
+  cookie = ""; // mulai sesi baru — status akan set cookie sendiri
+  r = await req(`/api/auth/eid/vc/status?sid=${vcSid}`);
+  check("vc status APPROVED", r.data?.status === "APPROVED", `(${r.data?.status})`);
+  check("vc authenticated + user", r.data?.authenticated === true && Boolean(r.data?.user?.id), JSON.stringify(r.data));
+  r = await req("/api/auth/me");
+  check("session aktif via /me", r.data?.user?.id === r.data?.user?.id && Boolean(r.data?.user), `(${r.data?.user?.name ?? "none"})`);
+}
+
 console.log(`\n=== HASIL: ${pass} lulus, ${fail} gagal ===`);
 process.exit(fail > 0 ? 1 : 0);

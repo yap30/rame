@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { demoLogin } from "@/lib/auth";
-import { SESSION_COOKIE } from "@/lib/session";
+import { SESSION_COOKIE, isSecureRequest } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-/** Login demo (hanya tersedia saat EID_MODE=mock) */
+/** Login demo (mode mock, atau dev bila EID_ALLOW_DEMO_LOGIN=true) */
 export async function POST(req: NextRequest) {
-  if (process.env.EID_MODE && process.env.EID_MODE !== "mock") {
+  if (process.env.EID_MODE && process.env.EID_MODE !== "mock" && process.env.EID_ALLOW_DEMO_LOGIN !== "true") {
     return Response.json({ error: { code: "MOCK_DISABLED", message: "Mode mock nonaktif." } }, { status: 403 });
   }
   const body = (await req.json().catch(() => ({}))) as { kind?: string };
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureRequest(req),
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });

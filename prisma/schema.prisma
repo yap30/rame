@@ -609,3 +609,20 @@ model InsightRule {
   enabled       Boolean  @default(true)
   createdAt     DateTime @default(now())
 }
+
+// ---------- Auth: Login with VC (Verifier API e.id) ----------
+
+model AuthLoginSession {
+  id           String    @id @default(cuid())
+  sessionId    String    @unique // session_id dari e.id gateway (VP session)
+  status       String    @default("PENDING") // PENDING | SCANNED | APPROVED | REJECTED | EXPIRED
+  userId       String? // user RAME setelah APPROVED
+  holderDid    String?
+  challenge    String?
+  qrToken      String?
+  eidOauthUrl  String?
+  expiresAt    DateTime?
+  rawJson      Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}

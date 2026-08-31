@@ -61,3 +61,14 @@ export async function demoLogin(kind: "participant" | "organizer") {
   const token = await issueSession(user.id, user.role, orgId);
   return { user, token };
 }
+
+/** Variant untuk Login with VC: subject = DID holder, tanpa profil OAuth */
+export async function findOrCreateUserByEidSubject(subject: string, extra?: { name?: string; email?: string }) {
+  return findOrCreateUserByEid({
+    subject,
+    name: extra?.name,
+    email: extra?.email,
+    trustLevel: "Tier 1",
+    raw: { source: "login-vc" },
+  });
+}

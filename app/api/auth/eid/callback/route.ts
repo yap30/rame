@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuth } from "@/lib/eid";
 import { findOrCreateUserByEid, issueSession } from "@/lib/auth";
-import { SESSION_COOKIE } from "@/lib/session";
+import { SESSION_COOKIE, isSecureRequest } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     res.cookies.set(SESSION_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecureRequest(req),
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });

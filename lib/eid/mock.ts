@@ -3,7 +3,7 @@
 // Mensimulasikan OAuth SSO + Issuer tanpa credentials nyata.
 // Business logic tidak membedakan mock/real — hanya adapter ini.
 // ============================================================
-import { OAuthAdapter, IssuerAdapter, VerifierAdapter, HolderAdapter, EidAppInfo, EidProfile } from "./types";
+import { OAuthAdapter, IssuerAdapter, VerifierAdapter, HolderAdapter, EidAppInfo, EidProfile, LoginVcResult, PresentationWebhook } from "./types";
 import { createHash } from "crypto";
 
 const DEMO_PROFILES: Record<string, EidProfile> = {
@@ -75,6 +75,38 @@ export class MockIssuerAdapter implements IssuerAdapter {
 
 export class MockVerifierAdapter implements VerifierAdapter {
   mode = "mock" as const;
+
+  async ensureLoginTemplate(): Promise<string> {
+    return "mock-verification-template";
+  }
+
+  async loginVc(): Promise<LoginVcResult> {
+    return {
+      sessionId: `mock-session-${Date.now()}`,
+      eidOauthUrl: `rame://login?mock=1&t=${Date.now()}`,
+      expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+      status: "PENDING",
+      qrData: { challenge: `ch-${Date.now()}`, qrToken: `tok-${Date.now()}`, eventType: "LOGIN_VC" },
+    };
+  }
+
+  async getSession() {
+    return { status: "PENDING" };
+  }
+
+  parseWebhook(payload: Record<string, unknown>): PresentationWebhook {
+    const holder = (payload.holder_account ?? {}) as { did?: string; username?: string };
+    return {
+      eventType: String(payload.event_type ?? "LOGIN_VC"),
+      sessionId: String(payload.session_id ?? payload.id ?? ""),
+      status: String(payload.status ?? "UNKNOWN").toUpperCase(),
+      holderDid: holder.did,
+      holderName: holder.username,
+      rejectReason: payload.reject_reason ? String(payload.reject_reason) : null,
+      raw: payload,
+    };
+  }
+
   async verifyPresentation() {
     return { valid: true, subject: "did:idchain:demo:putri" };
   }

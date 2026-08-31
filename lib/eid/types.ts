@@ -84,10 +84,46 @@ export interface IssuerAdapter {
   submitClaim(input: IssuerEligibilityInput): Promise<IssuanceResult>;
 }
 
-// ---------- Verifier (extension point MVP) ----------
+// ---------- Verifier (Login with VC) ----------
+
+export interface LoginVcResult {
+  sessionId: string;
+  eidOauthUrl: string;
+  expiresAt: string;
+  status: string;
+  qrData: { challenge: string; qrToken: string; schemaId?: string; eventType?: string };
+}
+
+export interface VerifierSessionStatus {
+  status: string; // PENDING | SCANNED | APPROVED | REJECTED | EXPIRED
+  holderDid?: string;
+  holderName?: string;
+  rejectReason?: string | null;
+}
+
+export interface PresentationWebhook {
+  eventType: string;
+  sessionId: string;
+  challenge?: string;
+  qrToken?: string;
+  status: string; // SCANNED | APPROVED | REJECTED
+  holderDid?: string;
+  holderName?: string;
+  rejectReason?: string | null;
+  raw: Record<string, unknown>;
+}
 
 export interface VerifierAdapter {
   mode: EidMode;
+  /** Pastikan template verifikasi Login VC ada; kembalikan verification_id */
+  ensureLoginTemplate(): Promise<string>;
+  /** Buat login QR (Login with VC) */
+  loginVc(): Promise<LoginVcResult>;
+  /** Status sesi VP (polling) */
+  getSession(sessionId: string): Promise<VerifierSessionStatus>;
+  /** Parsing presentation webhook (Gateway -> RAME) */
+  parseWebhook(payload: Record<string, unknown>): PresentationWebhook;
+  /** Verifikasi presentasi langsung (extension point) */
   verifyPresentation(payload: Record<string, unknown>): Promise<{ valid: boolean; subject?: string; reason?: string }>;
 }
 
