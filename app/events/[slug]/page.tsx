@@ -90,9 +90,14 @@ export default function EventStoryPage() {
         <div className="rame-container relative py-12 sm:py-16">
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-3xl">
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-stamp" style={{ background: "rgb(var(--rame-accent))", color: "#fff" }}>
-                {(event.identity.logoEmoji as string) ?? "🎪"}
-              </span>
+              {event.identity.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={event.identity.logoUrl as string} alt="logo" className="h-12 w-12 rounded-2xl border border-white/20 object-cover shadow-stamp" />
+              ) : (
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-stamp" style={{ background: "rgb(var(--rame-accent))", color: "#fff" }}>
+                  {(event.identity.logoEmoji as string) ?? "🎪"}
+                </span>
+              )}
               <Badge tone="brand">{localizeLabel(event.journeyModeLabel, lang)}</Badge>
               <Badge>{event.city}</Badge>
               {event.pricing?.model === "PAID" ? (

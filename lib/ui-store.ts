@@ -8,6 +8,7 @@ import type { Lang } from "./i18n";
 export interface EventIdentity {
   eventShortName?: string;
   logoEmoji?: string;
+  logoUrl?: string;
   brand?: string;
   brandSoft?: string;
   brandInk?: string;

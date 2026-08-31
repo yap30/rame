@@ -69,9 +69,6 @@ export default function HomePage() {
             </h1>
             <p className="mt-5 max-w-xl text-base text-brand-ink/75 sm:text-lg">{t("home.heroSub")}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/events" className="btn-accent">
-                {t("home.exploreEvents")} <ArrowRight className="h-4 w-4" />
-              </Link>
               <Link href="/events/jelajah-kota-tua" className="btn !border !border-white/25 !bg-white/10 !text-white hover:!bg-white/20">
                 {t("home.viewDemo")}
               </Link>

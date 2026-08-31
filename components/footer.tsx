@@ -16,9 +16,14 @@ export function Footer() {
       <div className="rame-container grid gap-8 py-10 sm:grid-cols-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg text-base font-bold" style={{ background: brand, color: "#fff" }}>
-              {identity?.logoEmoji ?? "◆"}
-            </span>
+            {identity?.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={identity.logoUrl} alt="" className="h-8 w-8 rounded-lg border border-ink/10 object-cover" />
+            ) : (
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg text-base font-bold" style={{ background: brand, color: "#fff" }}>
+                {identity?.logoEmoji ?? "◆"}
+              </span>
+            )}
             <span className="font-display text-lg font-bold" style={{ color: brand }}>
               {identity?.eventShortName ?? "RAME"}
             </span>
@@ -28,9 +33,7 @@ export function Footer() {
         <div>
           <div className="mb-3 text-xs font-bold uppercase tracking-widest text-ink/50">{t("nav.events")}</div>
           <ul className="space-y-2 text-sm text-ink/70">
-            <li><Link className="hover:text-brand" href="/events">{t("home.exploreEvents")}</Link></li>
             <li><Link className="hover:text-brand" href="/organizer">{t("nav.organizer")}</Link></li>
-            <li><Link className="hover:text-brand" href="/join">{t("common.login")}</Link></li>
             <li className="pt-2 text-xs text-ink/50">
               <Link className="hover:text-brand" href="/terms">Syarat & Ketentuan</Link> ·{" "}
               <Link className="hover:text-brand" href="/privacy">Privasi</Link>

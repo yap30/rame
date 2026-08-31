@@ -34,6 +34,18 @@ export async function findOrCreateUserByEid(profile: EidProfile): Promise<{ user
     user = await prisma.user.update({ where: { id: user.id }, data: { email: profile.email } });
   }
 
+  // Super Admin: email yang terverifikasi via e.id tercantum di SUPER_ADMIN_EMAILS
+  // (env produksi) → naikkan role ke ADMIN. Aman: identitas datang dari verifikasi e.id,
+  // bukan klaim klien.
+  const superAdmins = (process.env.SUPER_ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  const verifiedEmail = profile.email?.trim().toLowerCase();
+  if (verifiedEmail && superAdmins.includes(verifiedEmail) && user.role !== "ADMIN") {
+    user = await prisma.user.update({ where: { id: user.id }, data: { role: "ADMIN" } });
+  }
+
   let orgId: string | undefined;
   if (user.role === "ORGANIZER") {
     const membership = await prisma.organizationMember.findFirst({

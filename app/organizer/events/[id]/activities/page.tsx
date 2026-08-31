@@ -27,7 +27,7 @@ interface Bundle {
 }
 
 const TYPES = ["PHOTO", "QUIZ", "QR_CHECKIN", "FEEDBACK", "SCAVENGER", "CUSTOM"];
-const METHODS = ["AUTO", "ORGANIZER_VERIFY", "QR_VERIFY", "UPLOAD"];
+const METHODS = ["AUTO", "QR_VERIFY"]; // ORGANIZER_VERIFY & UPLOAD dihapus — verifikasi panitia via QR
 const ICONS = ["🎯", "🕰️", "🍢", "🧠", "🎻", "✍️", "🎸", "☕", "🎤", "💡", "🏛️", "📸"];
 
 export default function ActivitiesPage() {
@@ -78,6 +78,17 @@ export default function ActivitiesPage() {
   const remove = useMutation({
     mutationFn: (activityId: string) => api(`/api/organizer/activities/${activityId}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["org-event", id] }),
+  });
+
+  // stempel kustom buatan EO
+  const [newStamp, setNewStamp] = useState({ name: "", emoji: "📮" });
+  const addStamp = useMutation({
+    mutationFn: () => api<{ stamp: { id: string; name: string; emoji: string } }>(`/api/organizer/events/${id}/stamps`, { method: "POST", body: JSON.stringify(newStamp) }),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["org-event", id] });
+      setForm((f) => ({ ...f, stampId: res.stamp.id }));
+      setNewStamp({ name: "", emoji: "📮" });
+    },
   });
 
   if (isLoading) return <div className="flex justify-center py-24"><Spinner className="h-8 w-8" /></div>;
@@ -190,12 +201,19 @@ export default function ActivitiesPage() {
             </div>
             <div>
               <label className="label">Icon</label>
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1">
                 {ICONS.slice(0, 8).map((ic) => (
                   <button key={ic} onClick={() => set("icon", ic)} className={`flex h-9 w-9 items-center justify-center rounded-lg border text-lg ${form.icon === ic ? "border-brand bg-brand/10" : "border-ink/15"}`}>
                     {ic}
                   </button>
                 ))}
+                <input
+                  className="input h-9 w-24 !px-2 text-center text-lg"
+                  value={form.icon}
+                  onChange={(e) => set("icon", e.target.value)}
+                  placeholder="✨"
+                  title="Ikon kustom (emoji bebas)"
+                />
               </div>
             </div>
           </div>
@@ -206,6 +224,19 @@ export default function ActivitiesPage() {
                 <option value="">—</option>
                 {data.stamps.map((s) => <option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
               </select>
+              {/* stempel kustom buatan EO */}
+              <div className="mt-2 flex gap-1.5">
+                <input className="input h-9 w-12 !px-1 text-center" value={newStamp.emoji} onChange={(e) => setNewStamp((s) => ({ ...s, emoji: e.target.value }))} title="Emoji stempel" />
+                <input
+                  className="input h-9 flex-1 !px-2 text-xs"
+                  value={newStamp.name}
+                  onChange={(e) => setNewStamp((s) => ({ ...s, name: e.target.value }))}
+                  placeholder={t("org.stampCustom") ?? "Stempel baru…"}
+                />
+                <Button variant="ghost" className="!h-9 !px-3 text-xs" onClick={() => addStamp.mutate()} loading={addStamp.isPending} disabled={!newStamp.name.trim()}>
+                  + {t("org.stampCustomAdd") ?? "Buat"}
+                </Button>
+              </div>
             </div>
             <div className="flex items-end gap-4 pb-1">
               <label className="flex items-center gap-2 text-sm font-semibold">

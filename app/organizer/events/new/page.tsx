@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Upload } from "lucide-react";
 import { api, useT } from "@/lib/client";
 import { Button, InfoTip } from "@/components/ui";
 
@@ -31,6 +31,8 @@ export default function NewEventPage() {
     venueName: "",
     emoji: EMOJIS[0],
     palette: 0,
+    logoUrl: "",
+    customTag: "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export default function NewEventPage() {
     setBusy(true);
     setError(null);
     try {
-      const pal = COLORS[form.palette];
+      const pal = COLORS[form.palette] ?? COLORS[0]; // palette -1 (custom tag) → warna default
       const res = await api<{ event: { id: string } }>("/api/organizer/events", {
         method: "POST",
         body: JSON.stringify({
@@ -56,7 +58,13 @@ export default function NewEventPage() {
           price: form.price ? Number(form.price) : null,
           quota: form.quota ? Number(form.quota) : null,
           venueName: form.venueName || undefined,
-          identity: { eventShortName: form.name, logoEmoji: form.emoji, ...pal },
+          identity: {
+            eventShortName: form.name,
+            logoEmoji: form.emoji,
+            logoUrl: form.logoUrl || undefined,
+            ...pal,
+            label: form.customTag || pal.label, // override label palette dengan tag kustom
+          },
         }),
       });
       router.push(`/organizer/events/${res.event.id}`);
@@ -170,7 +178,7 @@ export default function NewEventPage() {
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="mb-2 flex flex-wrap gap-2">
             {COLORS.map((c, i) => (
               <button
                 key={c.label}
@@ -182,7 +190,43 @@ export default function NewEventPage() {
                 {c.label}
               </button>
             ))}
+            {/* tag kustom */}
+            <button
+              onClick={() => set("palette", -1)}
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold ${form.palette === -1 ? "border-brand ring-2 ring-brand/30" : "border-ink/15"}`}
+            >
+              ✏️ Custom tag
+            </button>
           </div>
+          {form.palette === -1 && (
+            <input className="input mb-2" value={form.customTag} onChange={(e) => set("customTag", e.target.value)} placeholder="Tulis tag kustom (mis. Festival, Kompetisi, Pameran…)" />
+          )}
+
+          {/* logo upload */}
+          <div className="mb-1 text-xs font-semibold text-ink/55">Logo (opsional — unggah gambar sendiri)</div>
+          {form.logoUrl ? (
+            <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={form.logoUrl} alt="logo" className="h-12 w-12 rounded-xl border border-ink/10 object-cover" />
+              <button onClick={() => set("logoUrl", "")} className="text-xs font-semibold text-red-600 hover:underline">Hapus logo</button>
+            </div>
+          ) : (
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border-2 border-dashed border-ink/20 px-4 py-3 text-xs text-ink/55 hover:border-brand hover:text-brand">
+              <Upload className="h-4 w-4" /> Unggah gambar logo (PNG/JPG)
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const reader = new FileReader();
+                  reader.onload = () => set("logoUrl", String(reader.result));
+                  reader.readAsDataURL(f);
+                }}
+              />
+            </label>
+          )}
         </div>
 
         <Button className="w-full !py-3" onClick={submit} loading={busy} disabled={!form.name}>

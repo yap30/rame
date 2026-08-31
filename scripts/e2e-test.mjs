@@ -261,5 +261,20 @@ check("sesi baru ber-role ORGANIZER", r.data?.user?.role === "ORGANIZER", `(${r.
 r = await req("/api/organizer/events", { method: "POST", body: { name: `Event EO Baru ${Date.now()}` } });
 check("langsung bisa buat event sbg EO", r.status === 200 && Boolean(r.data?.event?.id), `(${r.status})`);
 
+console.log("▶ 16. Super Admin (email di SUPER_ADMIN_EMAILS -> ADMIN)");
+r = await req("/api/auth/eid/vc/start", { method: "POST" });
+const saSid = r.data?.sessionId;
+if (saSid) {
+  r = await req("/api/eid/verifier/webhook", {
+    method: "POST",
+    body: { event_type: "LOGIN_VC", session_id: saSid, status: "APPROVED", holder_account: { did: "did:eid:e2e-superadmin", username: "andrew.yapvito@gmail.com" } },
+  });
+  check("webhook super admin diterima", r.data?.status === "APPROVED", `(${r.data?.status})`);
+  r = await req(`/api/auth/eid/vc/status?sid=${saSid}`);
+  check("login -> role ADMIN (super admin)", r.data?.user?.role === "ADMIN", `(${r.data?.user?.role})`);
+  r = await req("/api/auth/me");
+  check("sesi admin aktif", r.data?.user?.role === "ADMIN", `(${r.data?.user?.role})`);
+}
+
 console.log(`\n=== HASIL: ${pass} lulus, ${fail} gagal ===`);
 process.exit(fail > 0 ? 1 : 0);

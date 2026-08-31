@@ -61,21 +61,29 @@ export function Nav() {
   const brandInk = identity?.brandInk ?? "#ffffff";
   const emoji = identity?.logoEmoji ?? "◆";
 
-  const links = [
-    { href: "/", label: t("nav.home") },
-    { href: "/events", label: t("nav.events") },
-  ];
+  // sebelum login, daftar event sudah tersedia di beranda — sembunyikan menu Event
+  const links = me?.user
+    ? [
+        { href: "/", label: t("nav.home") },
+        { href: "/events", label: t("nav.events") },
+      ]
+    : [{ href: "/", label: t("nav.home") }];
 
   return (
     <header className="sticky top-0 z-40 border-b border-ink/10 backdrop-blur-md" style={{ background: "rgb(var(--rame-paper) / 0.85)" }}>
       <div className="rame-container flex h-16 items-center justify-between gap-3">
         <Link href="/" className="flex items-center gap-2.5">
-          <span
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-lg font-bold shadow-lift"
-            style={{ background: brand, color: brandInk }}
-          >
-            {emoji}
-          </span>
+          {identity?.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={identity.logoUrl} alt="" className="h-9 w-9 rounded-xl border border-ink/10 object-cover" />
+          ) : (
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-lg font-bold shadow-lift"
+              style={{ background: brand, color: brandInk }}
+            >
+              {emoji}
+            </span>
+          )}
           <span className="font-display text-xl font-bold tracking-tight" style={{ color: brand }}>
             {identity?.eventShortName ?? "RAME"}
           </span>

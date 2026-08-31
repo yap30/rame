@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, QrCode, RefreshCw, Upload } from "lucide-react";
+import { ArrowLeft, Check, QrCode, RefreshCw, Trash2, Upload } from "lucide-react";
 import { api, useT, localizeLabel } from "@/lib/client";
 import { useUiStore } from "@/lib/ui-store";
 import { Badge, Button, FadeUp, Spinner } from "@/components/ui";
@@ -338,8 +338,19 @@ function UploadBlock({ onUpload, pending, evidenceMode = false, note }: { onUplo
         </label>
       )}
       {preview && evidenceMode ? (
-        <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-accent/10 px-3 py-2.5 text-sm font-semibold text-accent">
-          <Check className="h-4 w-4" /> {note ?? t("activity.evidenceReady")}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <span className="flex items-center gap-2 rounded-xl bg-accent/10 px-3 py-2.5 text-sm font-semibold text-accent">
+            <Check className="h-4 w-4" /> {note ?? t("activity.evidenceReady")}
+          </span>
+          <button
+            onClick={() => {
+              setPreview(null);
+              onUpload(""); // hapus bukti — peserta bisa unggah ulang
+            }}
+            className="flex items-center gap-1.5 rounded-xl border border-red-200 px-3 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" /> {t("activity.deletePhoto")}
+          </button>
         </div>
       ) : (
         preview && (

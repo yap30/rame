@@ -48,11 +48,12 @@ export async function GET(req: NextRequest) {
     const did = row.holderDid;
     if (!did) return Response.json({ ok: true, status: "APPROVED", authenticated: false, message: "HOLDER_DID_MISSING" });
 
-    // nama holder dari raw webhook bila ada
+    // nama & email holder dari raw webhook bila ada (username e.id = email)
     const raw = (row.rawJson ?? {}) as { holderName?: string; holder_account?: { username?: string } };
     const holderName = raw.holderName ?? raw.holder_account?.username;
+    const holderEmail = raw.holder_account?.username;
 
-    const { user, orgId } = await findOrCreateUserByEidSubject(did, holderName ? { name: holderName } : undefined);
+    const { user, orgId } = await findOrCreateUserByEidSubject(did, holderName || holderEmail ? { name: holderName, email: holderEmail } : undefined);
     if (!row.userId) {
       await prisma.authLoginSession.update({ where: { id: row.id }, data: { userId: user.id } });
     }
