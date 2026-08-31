@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { CheckCircle2, ExternalLink, Rocket } from "lucide-react";
 import { api, useT } from "@/lib/client";
-import { Badge, Button, Spinner } from "@/components/ui";
+import { Badge, Button, InfoTip, Spinner } from "@/components/ui";
 
 interface Bundle {
   event: {
@@ -130,13 +130,31 @@ export default function EventSetupPage() {
           </div>
         </div>
         <div>
-          <label className="label">{t("org.journeyMode")}</label>
-          <select className="input" value={form.journeyMode ?? "HYBRID"} onChange={(ev) => setForm((f) => ({ ...f, journeyMode: ev.target.value }))}>
-            <option value="LINEAR">Linier</option>
-            <option value="BRANCHING">Bercabang</option>
-            <option value="FREE_EXPLORATION">Eksplorasi Bebas</option>
-            <option value="HYBRID">Hibrida</option>
-          </select>
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <label className="label !mb-0">{t("org.journeyMode")}</label>
+            <InfoTip text={t("org.jm.hybrid")} />
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              { value: "LINEAR", key: "org.jm.linear" },
+              { value: "BRANCHING", key: "org.jm.branching" },
+              { value: "FREE_EXPLORATION", key: "org.jm.free" },
+              { value: "HYBRID", key: "org.jm.hybrid" },
+            ].map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, journeyMode: m.value }))}
+                className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-bold transition ${
+                  form.journeyMode === m.value ? "border-brand bg-brand/10 text-brand" : "border-ink/15 hover:bg-ink/5"
+                }`}
+              >
+                {m.value === "LINEAR" ? "→" : m.value === "BRANCHING" ? "⎇" : m.value === "FREE_EXPLORATION" ? "✦" : "◈"}{" "}
+                {t(m.key === "org.jm.linear" ? "common.linear" : m.key === "org.jm.branching" ? "common.branching" : m.key === "org.jm.free" ? "common.freeExplore" : "common.hybrid")}
+                <InfoTip text={t(m.key)} />
+              </button>
+            ))}
+          </div>
         </div>
         <div>
           <label className="label">{t("org.story")}</label>

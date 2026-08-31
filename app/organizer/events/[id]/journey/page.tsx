@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Check, Link2, Map as MapIcon, Save } from "lucide-react";
 import { api, useT } from "@/lib/client";
-import { Badge, Button, Spinner } from "@/components/ui";
+import { Badge, Button, InfoTip, Spinner } from "@/components/ui";
 
 interface Bundle {
   event: { id: string; slug: string; name: string; journeyMode: string };
@@ -70,13 +70,31 @@ export default function JourneyBuilderPage() {
       <p className="mb-6 text-sm text-ink/60">{t("org.journeyEditorSub")}</p>
 
       <div className="mb-5">
-        <label className="label">{t("event.journeyMode")}</label>
-        <select className="input max-w-xs" value={mode} onChange={(e) => setMode(e.target.value)}>
-          <option value="LINEAR">Linier</option>
-          <option value="BRANCHING">Bercabang</option>
-          <option value="FREE_EXPLORATION">Eksplorasi Bebas</option>
-          <option value="HYBRID">Hibrida</option>
-        </select>
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <label className="label !mb-0">{t("event.journeyMode")}</label>
+          <InfoTip text={t("org.jm.hybrid")} />
+        </div>
+        <div className="grid max-w-xl grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { value: "LINEAR", key: "org.jm.linear" },
+            { value: "BRANCHING", key: "org.jm.branching" },
+            { value: "FREE_EXPLORATION", key: "org.jm.free" },
+            { value: "HYBRID", key: "org.jm.hybrid" },
+          ].map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              onClick={() => setMode(m.value)}
+              className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-bold transition ${
+                mode === m.value ? "border-brand bg-brand/10 text-brand" : "border-ink/15 hover:bg-ink/5"
+              }`}
+            >
+              {m.value === "LINEAR" ? "→" : m.value === "BRANCHING" ? "⎇" : m.value === "FREE_EXPLORATION" ? "✦" : "◈"}{" "}
+              {t(m.key === "org.jm.linear" ? "common.linear" : m.key === "org.jm.branching" ? "common.branching" : m.key === "org.jm.free" ? "common.freeExplore" : "common.hybrid")}
+              <InfoTip text={t(m.key)} />
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-3">

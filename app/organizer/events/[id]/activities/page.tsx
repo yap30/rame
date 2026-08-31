@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { api, useT } from "@/lib/client";
-import { Badge, Button, Spinner } from "@/components/ui";
+import { Badge, Button, InfoTip, Spinner } from "@/components/ui";
 
 interface Bundle {
   event: { id: string; name: string };
@@ -141,16 +141,46 @@ export default function ActivitiesPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="label">{t("org.activityType")}</label>
-              <select className="input" value={form.type} onChange={(e) => set("type", e.target.value)}>
-                {TYPES.map((ty) => <option key={ty} value={ty}>{ty}</option>)}
-              </select>
+              <div className="mb-1.5 flex items-center gap-1.5">
+                <label className="label !mb-0">{t("org.activityType")}</label>
+                <InfoTip text={t("org.at.photo")} />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {TYPES.map((ty) => (
+                  <button
+                    key={ty}
+                    type="button"
+                    onClick={() => set("type", ty)}
+                    className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold transition ${
+                      form.type === ty ? "border-brand bg-brand/10 text-brand" : "border-ink/15 hover:bg-ink/5"
+                    }`}
+                  >
+                    {ty}
+                    <InfoTip text={t(`org.at.${ty.toLowerCase()}`)} />
+                  </button>
+                ))}
+              </div>
             </div>
             <div>
-              <label className="label">{t("org.completionMethod")}</label>
-              <select className="input" value={form.completionMethod} onChange={(e) => set("completionMethod", e.target.value)}>
-                {METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
+              <div className="mb-1.5 flex items-center gap-1.5">
+                <label className="label !mb-0">{t("org.completionMethod")}</label>
+                <InfoTip text={t("org.cm.qr_verify")} />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {METHODS.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => set("completionMethod", m)}
+                    className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold transition ${
+                      form.completionMethod === m ? "border-brand bg-brand/10 text-brand" : "border-ink/15 hover:bg-ink/5"
+                    }`}
+                  >
+                    {m}
+                    <InfoTip text={t(`org.cm.${m.toLowerCase()}`)} />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-4">
@@ -180,7 +210,7 @@ export default function ActivitiesPage() {
             <div className="flex items-end gap-4 pb-1">
               <label className="flex items-center gap-2 text-sm font-semibold">
                 <input type="checkbox" checked={form.verificationRequired} onChange={(e) => set("verificationRequired", e.target.checked)} className="h-4 w-4 accent-[rgb(var(--rame-brand))]" />
-                {t("org.verifyRequired")}
+                {t("org.verifyRequired")} <InfoTip text={t("org.verifyRequiredHint")} />
               </label>
               <label className="flex items-center gap-2 text-sm font-semibold">
                 <input type="checkbox" checked={form.repeatable} onChange={(e) => set("repeatable", e.target.checked)} className="h-4 w-4 accent-[rgb(var(--rame-brand))]" />

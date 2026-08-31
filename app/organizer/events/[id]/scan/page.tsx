@@ -165,7 +165,15 @@ export default function LiveScannerPage() {
     <div className="max-w-xl">
       <div className="section-kicker">{t("scanner.title")}</div>
       <h1 className="section-title mb-2">{t("scanner.title")}</h1>
-      <p className="mb-5 text-sm text-ink/60">{t("scanner.sub")}</p>
+      <p className="mb-4 text-sm text-ink/60">{t("scanner.sub")}</p>
+
+      {/* penjelasan konteks */}
+      <div className="mb-5 flex items-start gap-3 rounded-2xl border border-brand/15 bg-brand/5 p-4 text-sm leading-relaxed text-ink/75">
+        <Camera className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+        <span>
+          <strong className="text-brand">Cara memakai:</strong> {t("org.scanHow")}
+        </span>
+      </div>
 
       {/* status koneksi */}
       <div className="mb-4 flex items-center gap-2">

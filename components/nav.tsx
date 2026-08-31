@@ -69,18 +69,18 @@ export function Nav() {
               {l.label}
             </Link>
           ))}
-          {me?.user ? (
+          {me?.user?.role === "PARTICIPANT" ? (
             <Link
               href="/dashboard"
               className={`rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/dashboard") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
             >
               Dashboard
             </Link>
-          ) : (
+          ) : !me?.user ? (
             <Link href="/register" className="rounded-full px-4 py-2 text-sm font-medium text-ink/70 transition hover:bg-ink/5">
               Daftar
             </Link>
-          )}
+          ) : null}
           {me?.user?.role === "ORGANIZER" && (
             <Link
               href="/organizer"
@@ -137,15 +137,15 @@ export function Nav() {
                 {l.label}
               </Link>
             ))}
-            {me?.user ? (
+            {me?.user?.role === "PARTICIPANT" ? (
               <Link href="/dashboard" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
                 Dashboard
               </Link>
-            ) : (
+            ) : !me?.user ? (
               <Link href="/register" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
                 Daftar
               </Link>
-            )}
+            ) : null}
             {me?.user?.role === "ORGANIZER" && (
               <Link href="/organizer" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
                 {t("nav.organizer")}

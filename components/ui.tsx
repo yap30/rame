@@ -3,10 +3,43 @@
 // ============================================================
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 
 export function Spinner({ className = "h-5 w-5" }: { className?: string }) {
   return <Loader2 className={`animate-spin ${className}`} aria-label="loading" />;
+}
+
+/** Ikon "!" dengan tooltip konteks saat hover/klik (aksesibel: keyboard) */
+export function InfoTip({ text, className = "" }: { text: string; className?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      className={`relative inline-flex align-middle ${className}`}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={(e) => {
+        e.stopPropagation();
+        setOpen((o) => !o);
+      }}
+    >
+      <span
+        role="img"
+        aria-label="Info"
+        tabIndex={0}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        className="flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-current text-[9px] font-black leading-none opacity-70 transition hover:opacity-100"
+      >
+        !
+      </span>
+      {open && (
+        <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-60 -translate-x-1/2 rounded-xl border border-ink/10 bg-white p-2.5 text-left text-[11px] font-medium leading-snug text-ink/80 shadow-lift">
+          {text}
+        </span>
+      )}
+    </span>
+  );
 }
 
 export function Button({

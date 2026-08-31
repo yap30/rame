@@ -40,7 +40,15 @@ export default function ScannerDevicesPage() {
     <div className="max-w-2xl">
       <div className="section-kicker">{t("org.scanner")}</div>
       <h1 className="section-title mb-2">{t("org.scannerDevices")}</h1>
-      <p className="mb-6 text-sm text-ink/60">{t("scanner.sub")}</p>
+      <p className="mb-4 text-sm text-ink/60">{t("scanner.sub")}</p>
+
+      {/* penjelasan konteks */}
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-brand/15 bg-brand/5 p-4 text-sm leading-relaxed text-ink/75">
+        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+        <span>
+          <strong className="text-brand">Bagaimana cara kerjanya?</strong> {t("org.scannerHow")}
+        </span>
+      </div>
 
       <div className="mb-6 flex gap-2">
         <input className="input" placeholder={t("scanner.deviceName")} value={name} onChange={(e) => setName(e.target.value)} />

@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { BadgeCheck, Save } from "lucide-react";
 import { api, useT } from "@/lib/client";
-import { Badge, Button, Spinner } from "@/components/ui";
+import { Badge, Button, InfoTip, Spinner } from "@/components/ui";
 
 interface Bundle {
   event: { id: string; name: string };
@@ -68,7 +68,15 @@ export default function CredentialConfigPage() {
     <div className="max-w-2xl">
       <div className="section-kicker">{t("nav.credential")}</div>
       <h1 className="section-title mb-2">{t("org.enableCredential")}</h1>
-      <p className="mb-6 text-sm text-ink/60">{t("credential.sub")}</p>
+      <p className="mb-4 text-sm text-ink/60">{t("credential.sub")}</p>
+
+      {/* penjelasan konteks */}
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-brand/15 bg-brand/5 p-4 text-sm leading-relaxed text-ink/75">
+        <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+        <span>
+          <strong className="text-brand">Bagaimana cara kerjanya?</strong> {t("org.credentialHow")}
+        </span>
+      </div>
 
       <div className="card space-y-4 !p-5">
         <label className="flex items-center justify-between rounded-xl border border-ink/10 bg-white/60 px-4 py-3">
