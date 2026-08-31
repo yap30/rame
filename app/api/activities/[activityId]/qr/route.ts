@@ -18,6 +18,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
   const activity = await prisma.activity.findUnique({ where: { id: activityId } });
   if (!activity) return apiError("Aktivitas tidak ditemukan.", "ACTIVITY_NOT_FOUND", 404);
 
+  // sesi bisa menunjuk user yang sudah terhapus (mis. setelah reseed) → cek eksistensi
+  if (!(await prisma.user.findUnique({ where: { id: session.sub } }))) {
+    return apiError("Sesi tidak valid — silakan masuk ulang.", "SESSION_INVALID", 401);
+  }
+
   const joined = await prisma.eventParticipant.findUnique({
     where: { eventId_userId: { eventId: activity.eventId, userId: session.sub } },
   });

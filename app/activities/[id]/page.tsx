@@ -74,6 +74,13 @@ export default function ActivityPage() {
     }
   }, [data, id]);
 
+  // polling ringan: setelah panitia scan, halaman otomatis menampilkan state selesai
+  useEffect(() => {
+    if (!data || data.myStatus?.completed) return;
+    const iv = setInterval(() => qc.invalidateQueries({ queryKey: ["activity", id] }), 8000);
+    return () => clearInterval(iv);
+  }, [data, id, qc]);
+
   if (isLoading) return <div className="rame-container flex justify-center py-24"><Spinner className="h-8 w-8" /></div>;
   if (!data) return <div className="rame-container py-20 text-center">{t("common.notFound")}</div>;
 
@@ -125,7 +132,10 @@ export default function ActivityPage() {
                   note={t("activity.evidenceReady")}
                 />
               )}
-              <QrBlock activityId={a.id} hint={isUpload ? t("activity.scanAfterUpload") : undefined} />
+              <QrBlock activityId={a.id} hint={isUpload ? t("activity.scanAfterUpload") : undefined} onAlreadyCompleted={() => {
+                qc.invalidateQueries({ queryKey: ["activity", id] });
+                qc.invalidateQueries({ queryKey: ["event"] });
+              }} />
             </>
           ) : (
             <>
@@ -217,20 +227,26 @@ function QuizBlock({ questions, answers, setAnswers, wrong, onAnswer, onSubmit, 
   );
 }
 
-function QrBlock({ activityId, hint }: { activityId: string; hint?: string }) {
+function QrBlock({ activityId, hint, onAlreadyCompleted }: { activityId: string; hint?: string; onAlreadyCompleted?: () => void }) {
   const t = useT();
   const [qr, setQr] = useState<{ qr: string; expiresAt: string; ttlSeconds: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const loadQr = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await api<{ qr: string; expiresAt: string; ttlSeconds: number }>(`/api/activities/${activityId}/qr`, { method: "POST" });
       setQr(res);
       setCountdown(res.ttlSeconds);
-    } catch {
+    } catch (err) {
       setQr(null);
+      const e = err as Error & { code?: string };
+      setError(e.message ?? "Gagal membuat QR");
+      // aktivitas ternyata sudah selesai → biarkan halaman menampilkan state selesai
+      if (e.code === "ALREADY_COMPLETED" && onAlreadyCompleted) onAlreadyCompleted();
     } finally {
       setLoading(false);
     }
@@ -273,10 +289,14 @@ function QrBlock({ activityId, hint }: { activityId: string; hint?: string }) {
       {!loading && (!qr || expired) && (
         <div className="py-8">
           <div className="text-4xl">⏳</div>
-          <p className="mt-2 text-sm font-semibold text-ink/60">{t("qr.expired")}</p>
-          <Button className="mt-4" onClick={loadQr} loading={loading}>
-            <RefreshCw className="h-4 w-4" /> {t("qr.refresh")}
-          </Button>
+          <p className="mt-2 text-sm font-semibold text-ink/60">
+            {error ?? (expired ? t("qr.expired") : t("qr.title"))}
+          </p>
+          {!error && (
+            <Button className="mt-4" onClick={loadQr} loading={loading}>
+              <RefreshCw className="h-4 w-4" /> {t("qr.refresh")}
+            </Button>
+          )}
         </div>
       )}
     </div>
