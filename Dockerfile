@@ -8,6 +8,8 @@ WORKDIR /app
 
 # dependency (npm ci butuh package-lock; jika belum ada, pakai install)
 COPY package*.json ./
+# prisma dibutuhkan saat postinstall (prisma generate)
+COPY prisma ./prisma
 RUN npm install --no-audit --no-fund
 
 COPY . .
