@@ -10,7 +10,7 @@ import { Badge, FadeUp, ProgressBar, Spinner } from "@/components/ui";
 import { motion } from "framer-motion";
 
 interface MapData {
-  event: { id: string; slug: string; name: string; journeyMode: string; journeyModeLabel: string | { id: string; en: string }; identity: Record<string, unknown>; joined: boolean };
+  event: { id: string; slug: string; name: string; journeyMode: string; journeyModeLabel: string | { id: string; en: string }; identity: Record<string, unknown>; joined: boolean; waitlisted: boolean };
   journey: {
     nodes: { id: string; activityId: string; position: number; title: string; description: string | null; icon: string; xpReward: number; stamp: { id: string; name: string; emoji: string } | null; done: boolean; locked: boolean }[];
     edges: { from: string; to: string; required: boolean; label: string | null }[];
@@ -35,8 +35,17 @@ export default function ExperienceMapPage() {
     return (
       <div className="rame-container max-w-md py-20 text-center">
         <div className="text-5xl">🗺️</div>
-        <p className="mt-4 text-ink/60">{t("journey.joinFirst")}</p>
-        <Link href={`/events/${slug}`} className="btn-primary mt-5">{t("event.joinEvent")}</Link>
+        {data.event.waitlisted ? (
+          <>
+            <p className="mt-4 text-ink/60">{t("event.waitlisted")}</p>
+            <Link href={`/events/${slug}`} className="btn-primary mt-5">{t("event.eventStory")}</Link>
+          </>
+        ) : (
+          <>
+            <p className="mt-4 text-ink/60">{t("journey.joinFirst")}</p>
+            <Link href={`/events/${slug}`} className="btn-primary mt-5">{t("event.joinEvent")}</Link>
+          </>
+        )}
       </div>
     );
   }

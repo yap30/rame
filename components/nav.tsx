@@ -28,12 +28,20 @@ export function Nav() {
   const lang = useUiStore((s) => s.lang);
   const setLang = useUiStore((s) => s.setLang);
   const identity = useUiStore((s) => s.identity);
+  const setIdentity = useUiStore((s) => s.setIdentity);
   const [me, setMe] = useState<Me | null>(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     api<Me>("/api/auth/me").then(setMe).catch(() => setMe(null));
   }, [pathname]);
+
+  // identitas event hanya berlaku di halaman event/aktivitas — di luar itu
+  // tampilkan identitas platform (RAME), jangan event demo yang tersimpan.
+  const isEventContext = pathname.startsWith("/events/") || pathname.startsWith("/activities/");
+  useEffect(() => {
+    if (!isEventContext) setIdentity(null);
+  }, [pathname, isEventContext, setIdentity]);
 
   const brand = identity?.brand ?? "#1e3a34";
   const brandInk = identity?.brandInk ?? "#ffffff";

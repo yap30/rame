@@ -28,6 +28,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
   if (!event) return guardError({ ok: false, status: 404, code: "EVENT_NOT_FOUND", message: "Event tidak ditemukan." });
 
+  // waiting list: peserta yang slotnya penuh, menunggu persetujuan EO
+  const waitlist = await prisma.eventParticipant.findMany({
+    where: { eventId: id, status: "WAITLIST" },
+    orderBy: { joinedAt: "asc" },
+    include: { user: { select: { id: true, name: true, email: true } } },
+  });
+
   return Response.json({
     event: {
       id: event.id,
@@ -39,6 +46,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       city: event.city,
       status: event.status,
       journeyMode: event.journeyMode,
+      pricingModel: event.pricingModel,
+      price: event.price,
+      quota: event.quota,
       startsAt: event.startsAt,
       endsAt: event.endsAt,
       identity: event.identityJson ?? {},
@@ -47,6 +57,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       communities: event.communities.map((c) => c.community),
       mediaPartners: event.mediaPartners.map((m) => m.mediaPartner),
       userRole: guard.orgRole,
+      waitlist: waitlist.map((w) => ({ id: w.id, userId: w.user.id, name: w.user.name, email: w.user.email, joinedAt: w.joinedAt })),
     },
     journey: event.journey,
     activities: event.activities,
@@ -74,6 +85,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("story" in body) data.story = str(body.story);
   if ("city" in body) data.city = str(body.city);
   if (body.journeyMode) data.journeyMode = String(body.journeyMode);
+  if ("pricingModel" in body) data.pricingModel = body.pricingModel === "PAID" ? "PAID" : "FREE";
+  if ("price" in body) data.price = body.pricingModel === "PAID" ? Math.max(0, Number(body.price) || 0) : null;
+  if ("quota" in body) data.quota = body.quota != null && Number(body.quota) > 0 ? Math.floor(Number(body.quota)) : null;
   if ("status" in body) data.status = body.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
   if (body.startsAt) data.startsAt = new Date(String(body.startsAt));
   if (body.endsAt) data.endsAt = new Date(String(body.endsAt));

@@ -7,7 +7,10 @@ import { LOG_ACTIONS } from "@/lib/const";
 
 export const dynamic = "force-dynamic";
 
-/** Gabung event (POST /api/events/{id}/join) */
+/** Status partisipasi yang terhitung sebagai slot terpakai */
+const CONFIRMED_STATUSES = ["JOINED", "COMPLETED"];
+
+/** Gabung event (POST /api/events/{id}/join) — kuota penuh → waiting list */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
   const session = await readSession();
@@ -25,10 +28,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ eve
     where: { eventId_userId: { eventId: event.id, userId: session.sub } },
   });
   if (existing) {
+    if (existing.status === "WAITLIST") {
+      return Response.json({ joined: false, waitlisted: true, status: "WAITLIST", eventId: event.id, message: "ALREADY_WAITLISTED" });
+    }
+    if (existing.status === "REJECTED") {
+      return Response.json({ joined: false, waitlisted: false, status: "REJECTED", eventId: event.id, message: "WAITLIST_REJECTED" });
+    }
     return Response.json({ joined: true, eventId: event.id, message: "ALREADY_JOINED" });
   }
 
-  await prisma.eventParticipant.create({ data: { eventId: event.id, userId: session.sub } });
+  // kuota: hitung slot terpakai (JOINED + COMPLETED); penuh → WAITLIST
+  const quota = event.quota;
+  if (quota && quota > 0) {
+    const confirmedCount = await prisma.eventParticipant.count({
+      where: { eventId: event.id, status: { in: CONFIRMED_STATUSES } },
+    });
+    if (confirmedCount >= quota) {
+      await prisma.eventParticipant.create({ data: { eventId: event.id, userId: session.sub, status: "WAITLIST" } });
+      await logEvent(event.id, session.sub, "PARTICIPANT", "EVENT_WAITLISTED", { quota, confirmedCount });
+      return Response.json({ joined: false, waitlisted: true, status: "WAITLIST", eventId: event.id, quota, message: "QUOTA_FULL_WAITLIST" });
+    }
+  }
+
+  await prisma.eventParticipant.create({ data: { eventId: event.id, userId: session.sub, status: "JOINED" } });
   await logEvent(event.id, session.sub, "PARTICIPANT", LOG_ACTIONS.EVENT_JOINED, { source: "join" });
 
   return Response.json({ joined: true, eventId: event.id, message: "JOINED" });

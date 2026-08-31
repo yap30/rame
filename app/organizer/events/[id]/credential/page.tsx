@@ -97,7 +97,10 @@ export default function CredentialConfigPage() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label">{t("org.schemaId")}</label>
+            <div className="mb-1 flex items-center gap-1.5">
+              <label className="label !mb-0">{t("org.schemaId")}</label>
+              <InfoTip text={t("org.schemaIdHint")} />
+            </div>
             <input className="input font-mono text-xs" value={form.schemaId} onChange={(e) => set("schemaId", e.target.value)} />
           </div>
           <div>

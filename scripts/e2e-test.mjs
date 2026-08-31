@@ -197,5 +197,37 @@ r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "participa
 r = await req("/api/admin/users");
 check("participant ditolak akses admin", r.status === 401 || r.status === 403, `(${r.status})`);
 
+console.log("▶ 13. Kuota & waiting list (gratis/berbayar)");
+r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "organizer" } });
+r = await req("/api/organizer/events", { method: "POST", body: { name: `Event Kuota ${Date.now()}`, pricingModel: "PAID", price: 50000, quota: 1, journeyMode: "LINEAR" } });
+const qev = r.data.event;
+check("event berbayar + kuota 1 dibuat", r.status === 200 && Boolean(qev?.id), `(${r.status})`);
+if (qev?.id) {
+  await req(`/api/organizer/events/${qev.id}/publish`, { method: "POST", body: JSON.stringify({ status: "PUBLISHED" }) });
+  // peserta 1 (Putri) masuk
+  r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "participant" } });
+  r = await req(`/api/events/${qev.id}/join`, { method: "POST" });
+  check("peserta 1 JOINED", r.data?.joined === true, `(${r.data?.message})`);
+  // peserta 2 (user baru via register) → kuota penuh → waiting list
+  r = await req("/api/auth/register/organizer", { method: "POST", body: { name: "User Dua", email: `dua-${Date.now()}@test.id`, orgName: "Org Dua" } });
+  check("register user kedua", r.status === 200 && r.data?.ok, `(${r.status})`);
+  r = await req(`/api/events/${qev.id}/join`, { method: "POST" });
+  check("peserta 2 -> WAITLIST", r.data?.waitlisted === true && r.data?.status === "WAITLIST", `(${r.data?.message})`);
+  r = await req(`/api/events/${qev.id}`);
+  check("detail: pricing PAID + quota 1", r.data?.event?.pricing?.model === "PAID" && r.data?.event?.quota === 1, JSON.stringify(r.data?.event?.pricing));
+  check("detail: waitlistCount 1", r.data?.event?.waitlistCount === 1, `(${r.data?.event?.waitlistCount})`);
+  // EO approve
+  r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "organizer" } });
+  const qbundle = await req(`/api/organizer/events/${qev.id}`);
+  const wl = qbundle.data.event.waitlist?.[0];
+  check("waitlist terlihat oleh EO", Boolean(wl), JSON.stringify(qbundle.data.event.waitlist));
+  if (wl) {
+    r = await req(`/api/organizer/events/${qev.id}/waitlist/${wl.id}`, { method: "POST", body: JSON.stringify({ action: "approve" }) });
+    check("approve -> JOINED", r.data?.status === "JOINED", `(${r.data?.status})`);
+  }
+  r = await req(`/api/events/${qev.id}`);
+  check("setelah approve: confirmed 2, waitlist 0", r.data?.event?.confirmedCount === 2 && r.data?.event?.waitlistCount === 0, `(${r.data?.event?.confirmedCount}/${r.data?.event?.waitlistCount})`);
+}
+
 console.log(`\n=== HASIL: ${pass} lulus, ${fail} gagal ===`);
 process.exit(fail > 0 ? 1 : 0);

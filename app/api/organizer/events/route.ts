@@ -26,6 +26,9 @@ export async function POST(req: NextRequest) {
     story?: string;
     city?: string;
     journeyMode?: string;
+    pricingModel?: string;
+    price?: number | null;
+    quota?: number | null;
     venueName?: string;
     identity?: Record<string, unknown>;
     status?: string;
@@ -65,6 +68,9 @@ export async function POST(req: NextRequest) {
       story: body.story ?? null,
       city: body.city ?? null,
       journeyMode: body.journeyMode ?? "HYBRID",
+      pricingModel: body.pricingModel === "PAID" ? "PAID" : "FREE",
+      price: body.pricingModel === "PAID" ? Math.max(0, Number(body.price) || 0) : null,
+      quota: body.quota != null && Number(body.quota) > 0 ? Math.floor(Number(body.quota)) : null,
       status: body.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
       organizationId: membership.organizationId,
       venueId: venueId || (await prisma.venue.create({ data: { name: "Belum diatur", city: body.city } })).id,

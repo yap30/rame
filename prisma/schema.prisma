@@ -134,6 +134,9 @@ model Event {
   // White-label: token identitas visual event (warna, font, gaya stamp)
   identityJson Json?
   journeyMode String   @default("HYBRID") // LINEAR | BRANCHING | FREE_EXPLORATION | HYBRID
+  pricingModel String  @default("FREE") // FREE | PAID
+  price        Int? // harga tiket (IDR) bila PAID
+  quota        Int? // kuota peserta maksimal (null = tanpa batas)
   status      String   @default("DRAFT")  // DRAFT | PUBLISHED | ARCHIVED
   startsAt    DateTime?
   endsAt      DateTime?
@@ -189,7 +192,7 @@ model EventParticipant {
   id          String    @id @default(cuid())
   eventId     String
   userId      String
-  status      String    @default("JOINED") // JOINED | COMPLETED
+  status      String    @default("JOINED") // JOINED (confirmed) | WAITLIST | REJECTED | COMPLETED
   joinedAt    DateTime  @default(now())
   completedAt DateTime?
 

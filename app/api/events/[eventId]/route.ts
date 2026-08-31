@@ -4,6 +4,8 @@ import { readSession, apiError } from "@/lib/session";
 import prisma from "@/lib/db";
 import { JOURNEY_MODE_LABEL } from "@/lib/const";
 
+const CONFIRMED_STATUSES = ["JOINED", "COMPLETED"];
+
 export const dynamic = "force-dynamic";
 
 /** Detail event + bundle untuk participant (story, journey, stamps, achievement, credential, feedback) */
@@ -20,7 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ even
     prisma.feedbackForm.findUnique({ where: { eventId: event.id }, include: { questions: { orderBy: { sortOrder: "asc" } } } }),
   ]);
 
-  const [journey, stamps, achievements, participantCount, myParticipation, myCompletions, myStamps, myAchievements, myIssuance, myFeedback] =
+  const [journey, stamps, achievements, participantCount, confirmedCount, waitlistCount, myParticipation, myCompletions, myStamps, myAchievements, myIssuance, myFeedback] =
     await Promise.all([
       prisma.journey.findUnique({
         where: { eventId: event.id },
@@ -31,6 +33,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ even
       prisma.stamp.findMany({ where: { eventId: event.id }, orderBy: { sortOrder: "asc" } }),
       prisma.achievement.findMany({ where: { eventId: event.id }, orderBy: { sortOrder: "asc" } }),
       prisma.eventParticipant.count({ where: { eventId: event.id } }),
+      prisma.eventParticipant.count({ where: { eventId: event.id, status: { in: ["JOINED", "COMPLETED"] } } }),
+      prisma.eventParticipant.count({ where: { eventId: event.id, status: "WAITLIST" } }),
       me ? prisma.eventParticipant.findUnique({ where: { eventId_userId: { eventId: event.id, userId: me.id } } }) : null,
       me ? prisma.activityCompletion.findMany({ where: { eventId: event.id, userId: me.id } }) : [],
       me ? prisma.participantStamp.findMany({ where: { eventId: event.id, userId: me.id } }) : [],
@@ -80,7 +84,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ even
       communities: communities.map((c) => ({ id: c.community.id, name: c.community.name })),
       mediaPartners: mediaPartners.map((m) => ({ id: m.mediaPartner.id, name: m.mediaPartner.name, url: m.mediaPartner.url })),
       participants: participantCount,
-      joined: Boolean(myParticipation),
+      confirmedCount,
+      waitlistCount,
+      pricing: { model: event.pricingModel, price: event.price },
+      quota: event.quota,
+      joined: myParticipation ? CONFIRMED_STATUSES.includes(myParticipation.status) : false,
+      waitlisted: myParticipation?.status === "WAITLIST",
+      participationStatus: myParticipation?.status ?? null,
       joinedAt: myParticipation?.joinedAt ?? null,
     },
     journey: journey

@@ -29,7 +29,13 @@ interface EventDetail {
     communities: { id: string; name: string }[];
     mediaPartners: { id: string; name: string }[];
     participants: number;
+    confirmedCount: number;
+    waitlistCount: number;
+    pricing: { model: string; price: number | null };
+    quota: number | null;
     joined: boolean;
+    waitlisted: boolean;
+    participationStatus: string | null;
   };
   journey: {
     nodes: { id: string; activityId: string; position: number; title: string; icon: string; done: boolean; locked: boolean; stamp: { id: string; name: string; emoji: string } | null }[];
@@ -57,9 +63,13 @@ export default function EventStoryPage() {
   useThemeEffect(data?.event.identity);
 
   const join = useMutation({
-    mutationFn: () => api<{ joined: boolean }>(`/api/events/${data?.event.id}/join`, { method: "POST" }),
-    onSuccess: () => {
+    mutationFn: () => api<{ joined: boolean; waitlisted?: boolean }>(`/api/events/${data?.event.id}/join`, { method: "POST" }),
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["event", slug] });
+      if (res?.waitlisted) {
+        router.refresh();
+        return;
+      }
       router.push(`/events/${slug}/map`);
     },
   });
@@ -85,6 +95,15 @@ export default function EventStoryPage() {
               </span>
               <Badge tone="brand">{localizeLabel(event.journeyModeLabel, lang)}</Badge>
               <Badge>{event.city}</Badge>
+              {event.pricing?.model === "PAID" ? (
+                <Badge tone="accent">🎟️ Rp {(event.pricing.price ?? 0).toLocaleString("id-ID")}</Badge>
+              ) : (
+                <Badge tone="success">{t("event.pricingFree")}</Badge>
+              )}
+              {event.quota != null && (
+                <Badge>{t("event.quotaLeft").replace("{confirmed}", String(event.confirmedCount)).replace("{quota}", String(event.quota))}</Badge>
+              )}
+              {event.waitlisted && <Badge tone="accent">⏳ Waiting List</Badge>}
               {event.status === "PUBLISHED" ? <Badge tone="success">● {t("org.published")}</Badge> : <Badge tone="neutral">{t("org.draft")}</Badge>}
             </div>
             <h1 className="font-display text-4xl font-black leading-tight tracking-tight text-brand-ink sm:text-5xl">{event.name}</h1>
@@ -105,6 +124,10 @@ export default function EventStoryPage() {
                     <StampIcon className="h-4 w-4" /> {t("nav.stamps")} ({collected}/{stamps.length})
                   </Link>
                 </>
+              ) : event.waitlisted ? (
+                <div className="flex items-center gap-2 rounded-2xl border border-accent/30 bg-accent/10 px-5 py-3 text-sm font-bold text-accent">
+                  ⏳ {t("event.waitlisted")}
+                </div>
               ) : (
                 <Button variant="accent" onClick={() => join.mutate()} loading={join.isPending} className="!py-3 text-base">
                   {t("event.joinEvent")} <ArrowRight className="h-4 w-4" />

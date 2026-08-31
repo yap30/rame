@@ -25,6 +25,9 @@ export default function NewEventPage() {
     story: "",
     city: "",
     journeyMode: "HYBRID",
+    pricingModel: "FREE",
+    price: "",
+    quota: "",
     venueName: "",
     emoji: EMOJIS[0],
     palette: 0,
@@ -49,6 +52,9 @@ export default function NewEventPage() {
           story: form.story || undefined,
           city: form.city || undefined,
           journeyMode: form.journeyMode,
+          pricingModel: form.pricingModel === "PAID" ? "PAID" : "FREE",
+          price: form.price ? Number(form.price) : null,
+          quota: form.quota ? Number(form.quota) : null,
           venueName: form.venueName || undefined,
           identity: { eventShortName: form.name, logoEmoji: form.emoji, ...pal },
         }),
@@ -114,6 +120,40 @@ export default function NewEventPage() {
                 <InfoTip text={t(m.key)} />
               </button>
             ))}
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <div className="mb-1.5 flex items-center gap-1.5">
+              <label className="label !mb-0">{t("org.pricing")}</label>
+            </div>
+            <div className="flex gap-2">
+              {[
+                { value: "FREE", label: t("org.free") },
+                { value: "PAID", label: t("org.paid") },
+              ].map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => set("pricingModel", p.value)}
+                  className={`flex-1 rounded-xl border px-3 py-2 text-sm font-bold transition ${
+                    form.pricingModel === p.value ? "border-brand bg-brand/10 text-brand" : "border-ink/15 hover:bg-ink/5"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            {form.pricingModel === "PAID" && (
+              <input type="number" min={0} step={1000} className="input mt-2" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder={t("org.price") + " (Rp)"} />
+            )}
+          </div>
+          <div>
+            <div className="mb-1 flex items-center gap-1.5">
+              <label className="label !mb-0">{t("org.quota")}</label>
+              <InfoTip text={t("org.quotaHint")} />
+            </div>
+            <input type="number" min={0} className="input" value={form.quota} onChange={(e) => set("quota", e.target.value)} placeholder="tanpa batas" />
           </div>
         </div>
         <div>

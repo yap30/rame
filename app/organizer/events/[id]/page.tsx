@@ -19,11 +19,15 @@ interface Bundle {
     city: string | null;
     status: string;
     journeyMode: string;
+    pricingModel: string;
+    price: number | null;
+    quota: number | null;
     startsAt: string | null;
     endsAt: string | null;
     identity: { logoEmoji?: string; brand?: string; eventShortName?: string; brandSoft?: string; accent?: string; gold?: string; paper?: string; ink?: string };
     venue: { name: string; address?: string | null; city?: string | null } | null;
     organization: { name: string } | null;
+    waitlist: { id: string; userId: string; name: string; email: string | null; joinedAt: string }[];
   };
 }
 
@@ -45,6 +49,9 @@ export default function EventSetupPage() {
         story: e.story ?? "",
         city: e.city ?? "",
         journeyMode: e.journeyMode,
+        pricingModel: e.pricingModel,
+        price: e.price != null ? String(e.price) : "",
+        quota: e.quota != null ? String(e.quota) : "",
         venueName: e.venue?.name ?? "",
         startsAt: e.startsAt ? e.startsAt.slice(0, 16) : "",
         endsAt: e.endsAt ? e.endsAt.slice(0, 16) : "",
@@ -63,6 +70,9 @@ export default function EventSetupPage() {
           story: form.story,
           city: form.city,
           journeyMode: form.journeyMode,
+          pricingModel: form.pricingModel === "PAID" ? "PAID" : "FREE",
+          price: form.price ? Number(form.price) : null,
+          quota: form.quota ? Number(form.quota) : null,
           venueName: form.venueName,
           startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : undefined,
           endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : undefined,
@@ -73,6 +83,11 @@ export default function EventSetupPage() {
 
   const publish = useMutation({
     mutationFn: () => api(`/api/organizer/events/${id}/publish`, { method: "POST", body: JSON.stringify({ status: "PUBLISHED" }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["org-event", id] }),
+  });
+
+  const waitlistAction = useMutation({
+    mutationFn: ({ pid, action }: { pid: string; action: string }) => api(`/api/organizer/events/${id}/waitlist/${pid}`, { method: "POST", body: JSON.stringify({ action }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["org-event", id] }),
   });
 
@@ -159,6 +174,69 @@ export default function EventSetupPage() {
         <div>
           <label className="label">{t("org.story")}</label>
           <textarea className="input min-h-[130px]" value={form.story ?? ""} onChange={(ev) => setForm((f) => ({ ...f, story: ev.target.value }))} />
+        </div>
+
+        {/* harga & kuota */}
+        <div className="card space-y-3 !p-4">
+          <div className="label">{t("org.pricing")}</div>
+          <div className="flex gap-2">
+            {[
+              { value: "FREE", label: t("org.free") },
+              { value: "PAID", label: t("org.paid") },
+            ].map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, pricingModel: p.value }))}
+                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-bold transition ${
+                  form.pricingModel === p.value ? "border-brand bg-brand/10 text-brand" : "border-ink/15 hover:bg-ink/5"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {form.pricingModel === "PAID" && (
+            <div>
+              <label className="label">{t("org.price")}</label>
+              <input type="number" min={0} step={1000} className="input" value={form.price ?? ""} onChange={(ev) => setForm((f) => ({ ...f, price: ev.target.value }))} placeholder="50000" />
+            </div>
+          )}
+          <div>
+            <div className="mb-1 flex items-center gap-1.5">
+              <label className="label !mb-0">{t("org.quota")}</label>
+              <InfoTip text={t("org.quotaHint")} />
+            </div>
+            <input type="number" min={0} className="input" value={form.quota ?? ""} onChange={(ev) => setForm((f) => ({ ...f, quota: ev.target.value }))} placeholder="tanpa batas" />
+          </div>
+        </div>
+
+        {/* waiting list */}
+        <div className="card space-y-2 !p-4">
+          <div className="flex items-center gap-2">
+            <span className="label !mb-0">{t("org.waitlist")}</span>
+            {data.event.waitlist.length > 0 && <Badge tone="accent">{data.event.waitlist.length}</Badge>}
+          </div>
+          {data.event.waitlist.length === 0 ? (
+            <p className="text-sm text-ink/50">{t("org.waitlistEmpty")}</p>
+          ) : (
+            data.event.waitlist.map((w) => (
+              <div key={w.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-ink/10 px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-bold">{w.name}</div>
+                  <div className="truncate text-xs text-ink/50">{w.email ?? "—"}</div>
+                </div>
+                <div className="flex gap-1.5">
+                  <Button variant="accent" className="!px-3 !py-1.5 text-xs" onClick={() => waitlistAction.mutate({ pid: w.id, action: "approve" })} loading={waitlistAction.isPending}>
+                    {t("org.approve")}
+                  </Button>
+                  <Button variant="ghost" className="!px-3 !py-1.5 text-xs !text-red-600" onClick={() => waitlistAction.mutate({ pid: w.id, action: "reject" })}>
+                    {t("org.reject")}
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* preview identitas */}
