@@ -23,6 +23,9 @@ interface UiState {
   setLang: (lang: Lang) => void;
   identity: EventIdentity | null;
   setIdentity: (identity: EventIdentity | null) => void;
+  // peran aktif (pilihan di dropdown profile) — menentukan menu & halaman yang ditampilkan
+  view: "participant" | "organizer" | "admin";
+  setView: (view: UiState["view"]) => void;
   // aksesibilitas
   fontSize: 0 | 1 | 2 | 3; // A / A+ / A++ / A+++
   highContrast: boolean;
@@ -51,6 +54,8 @@ export const useUiStore = create<UiState>()(
       setLang: (lang) => set({ lang }),
       identity: null,
       setIdentity: (identity) => set({ identity: identity ?? DEFAULT_IDENTITY }),
+      view: "participant",
+      setView: (view) => set({ view }),
       fontSize: 0,
       highContrast: false,
       wideSpacing: false,

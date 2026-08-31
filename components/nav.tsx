@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Languages, LayoutDashboard, LogOut, Menu, Shield, Sparkles, X } from "lucide-react";
+import { Languages, LayoutDashboard, LogOut, Menu, Shield, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUiStore } from "@/lib/ui-store";
 import { api, useT } from "@/lib/client";
@@ -29,6 +29,7 @@ export function Nav() {
   const setLang = useUiStore((s) => s.setLang);
   const identity = useUiStore((s) => s.identity);
   const setIdentity = useUiStore((s) => s.setIdentity);
+  const view = useUiStore((s) => s.view);
   const [me, setMe] = useState<Me | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -42,6 +43,19 @@ export function Nav() {
   useEffect(() => {
     if (!isEventContext) setIdentity(null);
   }, [pathname, isEventContext, setIdentity]);
+
+  // peran aktif menentukan menu & halaman — validasi terhadap peran sebenarnya di server
+  const role = me?.user?.role ?? null;
+  const effectiveView: "participant" | "organizer" | "admin" =
+    view === "admin"
+      ? role === "ADMIN"
+        ? "admin"
+        : role === "ORGANIZER"
+          ? "organizer"
+          : "participant"
+      : view === "organizer" && (role === "ORGANIZER" || role === "ADMIN")
+        ? "organizer"
+        : "participant";
 
   const brand = identity?.brand ?? "#1e3a34";
   const brandInk = identity?.brandInk ?? "#ffffff";
@@ -79,37 +93,34 @@ export function Nav() {
           ))}
           {me?.user ? (
             <>
-              <Link
-                href="/events"
-                className={`rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/events") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
-              >
-                {t("nav.events")}
-              </Link>
-              <Link
-                href="/dashboard"
-                className={`rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/dashboard") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
-              >
-                {t("nav.dashboard")}
-              </Link>
-              <Link
-                href="/organizer"
-                className={`rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/organizer") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
-              >
-                <Sparkles className="mr-1 inline h-3.5 w-3.5" />
-                {t("org.createEvent")}
-              </Link>
+              {effectiveView === "participant" && (
+                <Link
+                  href="/dashboard"
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/dashboard") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
+                >
+                  {t("nav.dashboard")}
+                </Link>
+              )}
+              {effectiveView === "organizer" && (
+                <Link
+                  href="/organizer"
+                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/organizer") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
+                >
+                  <LayoutDashboard className="h-4 w-4" /> {t("nav.organizer")}
+                </Link>
+              )}
+              {effectiveView === "admin" && (
+                <Link
+                  href="/admin"
+                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/admin") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
+                >
+                  <Shield className="h-4 w-4" /> Admin
+                </Link>
+              )}
             </>
           ) : (
-            <Link href="/register" className="rounded-full px-4 py-2 text-sm font-medium text-ink/70 transition hover:bg-ink/5">
-              Daftar
-            </Link>
-          )}
-          {me?.user?.role === "ADMIN" && (
-            <Link
-              href="/admin"
-              className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/admin") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
-            >
-              <Shield className="h-4 w-4" /> Admin
+            <Link href="/join" className="rounded-full px-4 py-2 text-sm font-medium text-ink/70 transition hover:bg-ink/5">
+              {t("common.login")}
             </Link>
           )}
         </nav>
@@ -154,24 +165,25 @@ export function Nav() {
             ))}
             {me?.user ? (
               <>
-                <Link href="/events" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
-                  {t("nav.events")}
-                </Link>
-                <Link href="/dashboard" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
-                  {t("nav.dashboard")}
-                </Link>
-                <Link href="/organizer" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
-                  ✨ {t("org.createEvent")}
-                </Link>
+                {effectiveView === "participant" && (
+                  <Link href="/dashboard" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
+                    {t("nav.dashboard")}
+                  </Link>
+                )}
+                {effectiveView === "organizer" && (
+                  <Link href="/organizer" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
+                    {t("nav.organizer")}
+                  </Link>
+                )}
+                {effectiveView === "admin" && (
+                  <Link href="/admin" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
+                    Admin
+                  </Link>
+                )}
               </>
             ) : (
-              <Link href="/register" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
-                Daftar
-              </Link>
-            )}
-            {me?.user?.role === "ADMIN" && (
-              <Link href="/admin" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
-                Admin
+              <Link href="/join" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
+                {t("common.login")}
               </Link>
             )}
             {me?.user && (

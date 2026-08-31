@@ -164,31 +164,25 @@ function JoinInner() {
             </div>
           )}
 
-          <div className="my-5 flex items-center gap-3 text-xs text-ink/40">
-            <span className="h-px flex-1 bg-ink/10" />
-            {t("auth.loginAlternative")}
-            <span className="h-px flex-1 bg-ink/10" />
-          </div>
-
-          {/* OAuth SSO + demo (alternatif) */}
-          <div className="space-y-2">
-            <a href={"/api/auth/eid/start?next=" + encodeURIComponent(next)} className="btn-ghost w-full">
-              <ShieldCheck className="h-4 w-4" /> {t("auth.signInEid")}
-            </a>
-            {eid.demoAllowed && (
-              <>
-                <button onClick={async () => { await api("/api/auth/mock-login", { method: "POST", body: JSON.stringify({ kind: "participant" }) }); router.push(next); router.refresh(); }} className="btn-ghost w-full">
-                  <UserRound className="h-4 w-4" /> {t("auth.participantDemo")}
-                </button>
-                <button onClick={async () => { await api("/api/auth/mock-login", { method: "POST", body: JSON.stringify({ kind: "organizer" }) }); router.push(next); router.refresh(); }} className="btn-ghost w-full">
-                  <Building2 className="h-4 w-4" /> {t("auth.organizerDemo")}
-                </button>
-                <button onClick={async () => { await api("/api/auth/mock-login", { method: "POST", body: JSON.stringify({ kind: "admin" }) }); router.push("/admin"); router.refresh(); }} className="btn-ghost w-full">
-                  <ShieldCheck className="h-4 w-4" /> Masuk sebagai Admin (demo)
-                </button>
-              </>
-            )}
-          </div>
+          {/* demo (mode dev saja) — tanpa OAuth */}
+          {eid.demoAllowed && (
+            <div className="my-5 space-y-2">
+              <div className="flex items-center gap-3 text-xs text-ink/40">
+                <span className="h-px flex-1 bg-ink/10" />
+                Mode demo
+                <span className="h-px flex-1 bg-ink/10" />
+              </div>
+              <button onClick={async () => { await api("/api/auth/mock-login", { method: "POST", body: JSON.stringify({ kind: "participant" }) }); router.push(next); router.refresh(); }} className="btn-ghost w-full">
+                <UserRound className="h-4 w-4" /> {t("auth.participantDemo")}
+              </button>
+              <button onClick={async () => { await api("/api/auth/mock-login", { method: "POST", body: JSON.stringify({ kind: "organizer" }) }); router.push(next); router.refresh(); }} className="btn-ghost w-full">
+                <Building2 className="h-4 w-4" /> {t("auth.organizerDemo")}
+              </button>
+              <button onClick={async () => { await api("/api/auth/mock-login", { method: "POST", body: JSON.stringify({ kind: "admin" }) }); router.push("/admin"); router.refresh(); }} className="btn-ghost w-full">
+                <ShieldCheck className="h-4 w-4" /> Masuk sebagai Admin (demo)
+              </button>
+            </div>
+          )}
 
           <div className="mt-6 flex items-start gap-2 rounded-xl bg-ink/5 p-3 text-xs text-ink/55">
             <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />

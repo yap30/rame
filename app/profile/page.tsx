@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Fingerprint, LayoutDashboard, LogOut } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BadgeCheck, Building2, Fingerprint, LayoutDashboard, LogOut, Shield, UserRound } from "lucide-react";
 import { api, useT } from "@/lib/client";
 import { Badge } from "@/components/ui";
+import { useUiStore } from "@/lib/ui-store";
 
 interface Me {
   user: {
@@ -24,7 +25,28 @@ export default function ProfilePage() {
   const t = useT();
   const router = useRouter();
   const qc = useQueryClient();
+  const view = useUiStore((s) => s.view);
+  const setView = useUiStore((s) => s.setView);
   const { data, isLoading } = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/api/auth/me") });
+
+  // pilih "Event Organizer" padahal role masih participant → aktifkan EO dulu (ensure)
+  const ensure = useMutation({
+    mutationFn: () => api("/api/organizer/ensure", { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me"] });
+      setView("organizer");
+      router.refresh();
+    },
+  });
+
+  const pickRole = (v: "participant" | "organizer" | "admin") => {
+    if (v === "organizer" && data?.user?.role !== "ORGANIZER" && data?.user?.role !== "ADMIN") {
+      ensure.mutate();
+      return;
+    }
+    setView(v);
+    router.refresh();
+  };
 
   if (isLoading) return <div className="rame-container py-20 text-center text-sm text-ink/50">{t("common.loading")}</div>;
   if (!data?.user) {
@@ -38,6 +60,15 @@ export default function ProfilePage() {
   }
 
   const u = data.user;
+  const canOrganizer = u.role === "ORGANIZER" || u.role === "ADMIN";
+  const canAdmin = u.role === "ADMIN";
+  const roles: { value: "participant" | "organizer" | "admin"; label: string; icon: React.ReactNode; disabled?: boolean }[] = [
+    { value: "participant", label: t("role.participant"), icon: <UserRound className="h-4 w-4" /> },
+    // organizer selalu bisa dipilih — bila belum EO, otomatis diaktifkan (ensure)
+    { value: "organizer", label: t("role.organizer"), icon: <Building2 className="h-4 w-4" /> },
+    { value: "admin", label: t("role.admin"), icon: <Shield className="h-4 w-4" />, disabled: !canAdmin },
+  ];
+  const activeView = view === "admin" && !canAdmin ? (canOrganizer ? "organizer" : "participant") : view === "organizer" && !canOrganizer ? "participant" : view;
 
   return (
     <div className="rame-container max-w-2xl py-12">
@@ -54,6 +85,32 @@ export default function ProfilePage() {
               <Badge tone="accent">{data.eid.label}</Badge>
             </div>
           </div>
+        </div>
+
+        {/* pilih peran — menentukan menu & halaman yang tampil */}
+        <div className="mt-6 rounded-2xl border border-brand/15 bg-brand/5 p-4">
+          <div className="label">{t("profile.role") ?? "Peran aktif"}</div>
+          <div className="mt-1 text-xs text-ink/55">{t("profile.roleNote")}</div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {roles.map((r) => (
+              <button
+                key={r.value}
+                onClick={() => pickRole(r.value)}
+                disabled={r.disabled}
+                title={r.disabled ? (r.value === "admin" ? "Khusus role Admin" : "Aktifkan via menu Buat Event") : undefined}
+                className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold transition ${
+                  activeView === r.value ? "border-brand bg-brand text-brand-ink shadow-lift" : "border-ink/15 hover:bg-ink/5"
+                } ${r.disabled ? "cursor-not-allowed opacity-40" : ""}`}
+              >
+                {r.icon} {r.label}
+              </button>
+            ))}
+          </div>
+          {activeView === "participant" && canOrganizer && (
+            <div className="mt-2 text-center text-[11px] text-ink/45">
+              💡 {t("role.organizer")}: {t("profile.roleHint") ?? "pilih untuk membuka dashboard penyelenggara"}
+            </div>
+          )}
         </div>
 
         <div className="mt-6 space-y-3 border-t border-ink/10 pt-6">
@@ -88,9 +145,14 @@ export default function ProfilePage() {
         )}
 
         <div className="mt-8 flex flex-wrap gap-2">
-          {u.role === "ORGANIZER" && (
+          {activeView === "organizer" && (
             <Link href="/organizer" className="btn-primary">
               <LayoutDashboard className="h-4 w-4" /> {t("nav.organizer")}
+            </Link>
+          )}
+          {activeView === "admin" && (
+            <Link href="/admin" className="btn-primary">
+              <Shield className="h-4 w-4" /> Admin
             </Link>
           )}
           <button
