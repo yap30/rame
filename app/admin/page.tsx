@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { api, useT } from "@/lib/client";
@@ -14,6 +15,10 @@ interface Overview {
 
 interface UsersData {
   users: { id: string; name: string; email: string | null; role: string; eidSubject: string | null; orgs: { name: string; role: string }[]; createdAt: string }[];
+}
+
+interface EventsData {
+  events: { id: string; name: string; slug: string; status: string; city: string | null; createdAt: string; organization: string; participants: number; activities: number }[];
 }
 
 const ROLE_TONE: Record<string, "brand" | "accent" | "neutral"> = {
@@ -30,10 +35,21 @@ export default function AdminPage() {
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => api<{ user: { role: string } | null }>("/api/auth/me") });
   const { data: overview, isLoading: loadingOv } = useQuery({ queryKey: ["admin-overview"], queryFn: () => api<Overview>("/api/admin/overview") });
   const { data: usersData, isLoading: loadingUsers } = useQuery({ queryKey: ["admin-users"], queryFn: () => api<UsersData>("/api/admin/users") });
+  const { data: eventsData, isLoading: loadingEvents } = useQuery({ queryKey: ["admin-events"], queryFn: () => api<EventsData>("/api/admin/events") });
 
   const setRole = useMutation({
     mutationFn: ({ id, role }: { id: string; role: string }) => api(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify({ role }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
+  });
+
+  // review event (approve/reject) — SUBMITTED
+  const review = useMutation({
+    mutationFn: ({ id, decision }: { id: string; decision: "approve" | "reject" }) =>
+      api(`/api/organizer/events/${id}/publish`, { method: "POST", body: JSON.stringify({ decision }) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-events"] });
+      qc.invalidateQueries({ queryKey: ["admin-overview"] });
+    },
   });
 
   if (me && !me.user) {
@@ -81,6 +97,43 @@ export default function AdminPage() {
         <div className="flex gap-2">
           <Badge tone={overview?.eid.real ? "brand" : "accent"}>{overview?.eid.label ?? "…"}</Badge>
           <Badge>{overview?.eid.mode}</Badge>
+        </div>
+      </div>
+
+      {/* review event (menunggu approval admin) */}
+      <div className="card mb-8 !p-0">
+        <div className="border-b border-ink/10 px-5 py-4 font-display text-lg font-bold">
+          🚀 Review Event ({eventsData?.events.filter((e) => e.status === "SUBMITTED").length ?? 0})
+        </div>
+        <div className="divide-y divide-ink/5">
+          {loadingEvents ? (
+            <div className="px-5 py-8 text-center"><Spinner className="mx-auto h-6 w-6" /></div>
+          ) : (eventsData?.events ?? []).filter((e) => e.status === "SUBMITTED").length === 0 ? (
+            <div className="px-5 py-8 text-center text-sm text-ink/50">Tidak ada event menunggu review.</div>
+          ) : (
+            (eventsData?.events ?? [])
+              .filter((e) => e.status === "SUBMITTED")
+              .map((e) => (
+                <div key={e.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/organizer/events/${e.id}`} className="truncate text-sm font-bold hover:text-brand">
+                      {e.name}
+                    </Link>
+                    <div className="truncate text-xs text-ink/50">
+                      {e.organization} · {e.city ?? "—"} · {e.activities} aktivitas · {e.participants} peserta
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Button variant="accent" className="!px-3 !py-1.5 text-xs" onClick={() => review.mutate({ id: e.id, decision: "approve" })} loading={review.isPending}>
+                      ✓ Setujui
+                    </Button>
+                    <Button variant="ghost" className="!px-3 !py-1.5 text-xs !text-red-600" onClick={() => review.mutate({ id: e.id, decision: "reject" })}>
+                      ✕ Tolak
+                    </Button>
+                  </div>
+                </div>
+              ))
+          )}
         </div>
       </div>
 

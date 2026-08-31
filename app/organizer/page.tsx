@@ -30,6 +30,12 @@ export default function OrganizerDashboard() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["org-events"] }),
   });
 
+  // ajukan review ke admin (event tidak bisa publish sendiri)
+  const submit = useMutation({
+    mutationFn: (eventId: string) => api(`/api/organizer/events/${eventId}/submit`, { method: "POST" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["org-events"] }),
+  });
+
   const confirmDelete = (ev: OrgEvent) => {
     if (window.confirm(`Hapus draft event "${ev.name}"? Tindakan ini tidak bisa dibatalkan.`)) {
       remove.mutate(ev.id);
@@ -68,7 +74,29 @@ export default function OrganizerDashboard() {
                     {ev.identityJson?.logoEmoji ?? "🎪"}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    {ev.status === "PUBLISHED" ? <Badge tone="success">● {t("org.published")}</Badge> : <Badge>{t("org.draft")}</Badge>}
+                    {ev.status === "PUBLISHED" ? (
+                      <Badge tone="success">● {t("org.published")}</Badge>
+                    ) : ev.status === "SUBMITTED" ? (
+                      <Badge tone="accent">⏳ {t("org.pendingReview")}</Badge>
+                    ) : ev.status === "REJECTED" ? (
+                      <Badge>✕ {t("org.rejected")}</Badge>
+                    ) : (
+                      <Badge>{t("org.draft")}</Badge>
+                    )}
+                    {ev.status === "DRAFT" && (
+                      <button
+                        title={t("org.submitReview")}
+                        aria-label={`Ajukan review ${ev.name}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          submit.mutate(ev.id);
+                        }}
+                        className="flex h-7 items-center gap-1 rounded-lg bg-brand/10 px-2 text-xs font-bold text-brand transition hover:bg-brand/20"
+                      >
+                        🚀 {t("org.submitReview")}
+                      </button>
+                    )}
                     {ev.status !== "PUBLISHED" && (
                       <button
                         title="Hapus draft event"

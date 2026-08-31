@@ -38,7 +38,8 @@ export default function OrganizerLayout({ children, params }: { children: React.
       router.push("/join?next=/organizer");
       return;
     }
-    if (data.user.role !== "ORGANIZER" && !ensure.isPending && !attempted.current) {
+    // ORGANIZER & ADMIN berhak masuk; peserta lain → aktifkan mode penyelenggara dulu
+    if (data.user.role !== "ORGANIZER" && data.user.role !== "ADMIN" && !ensure.isPending && !attempted.current) {
       attempted.current = true;
       setEnsureError(null);
       ensure.mutate();
@@ -48,7 +49,7 @@ export default function OrganizerLayout({ children, params }: { children: React.
   if (isLoading || !data?.user) {
     return <div className="rame-container flex justify-center py-24"><Spinner className="h-8 w-8" /></div>;
   }
-  if (data.user.role !== "ORGANIZER") {
+  if (data.user.role !== "ORGANIZER" && data.user.role !== "ADMIN") {
     if (ensure.isPending) {
       // sedang menyiapkan akun penyelenggara (ensure berjalan)
       return (

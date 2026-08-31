@@ -1,17 +1,40 @@
 import { NextRequest } from "next/server";
-import { requireCapability, guardError } from "@/lib/org-guard";
+import { readSession, apiError } from "@/lib/session";
 import prisma from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-/** Publikasikan / tarik draft event */
+/**
+ * Review event oleh ADMIN (approve/reject).
+ * EO tidak lagi bisa publish sendiri — event butuh approval admin.
+ * POST /api/organizer/events/{id}/publish  body: { decision: "approve"|"reject", reason? }
+ */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const guard = await requireCapability(id, "CREATE_EVENT");
-  if (!guard.ok) return guardError(guard);
+  const session = await readSession();
+  if (!session || session.role !== "ADMIN") return apiError("Hanya admin.", "FORBIDDEN", 403);
 
-  const body = (await req.json().catch(() => ({}))) as { status?: string };
-  const status = body.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
-  const event = await prisma.event.update({ where: { id }, data: { status } });
-  return Response.json({ event: { id: event.id, status: event.status } });
+  const event = await prisma.event.findUnique({ where: { id } });
+  if (!event) return apiError("Event tidak ditemukan.", "EVENT_NOT_FOUND", 404);
+  if (event.status !== "SUBMITTED") return apiError("Event tidak dalam status menunggu review.", "NOT_SUBMITTED", 409);
+
+  const body = (await req.json().catch(() => ({}))) as { decision?: string; reason?: string };
+  const approve = body.decision !== "reject";
+  const nextStatus = approve ? "PUBLISHED" : "REJECTED";
+
+  const updated = await prisma.event.update({
+    where: { id },
+    data: { status: nextStatus },
+  });
+
+  await prisma.eventLog.create({
+    data: {
+      eventId: id,
+      actorType: "ADMIN",
+      action: approve ? "EVENT_APPROVED" : "EVENT_REJECTED",
+      dataJson: { reason: body.reason ?? null, adminId: session.sub } as object,
+    },
+  });
+
+  return Response.json({ event: { id: updated.id, status: updated.status } });
 }

@@ -18,6 +18,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ eve
 
   const event = await findEventByIdOrSlug(eventId);
   if (!event) return apiError("Event tidak ditemukan.", "EVENT_NOT_FOUND", 404);
+  // hanya event yang disetujui admin (PUBLISHED) yang bisa diikuti peserta
+  if (event.status !== "PUBLISHED") {
+    return apiError("Event belum terbit.", "EVENT_NOT_PUBLISHED", 403);
+  }
 
   // sesi bisa menunjuk user yang sudah terhapus (mis. setelah reseed) → cek eksistensi
   if (!(await prisma.user.findUnique({ where: { id: session.sub } }))) {

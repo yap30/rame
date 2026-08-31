@@ -206,7 +206,16 @@ r = await req("/api/organizer/events", { method: "POST", body: { name: `Event Ku
 const qev = r.data.event;
 check("event berbayar + kuota 1 dibuat", r.status === 200 && Boolean(qev?.id), `(${r.status})`);
 if (qev?.id) {
-  await req(`/api/organizer/events/${qev.id}/publish`, { method: "POST", body: { status: "PUBLISHED" } });
+  // event butuh approval admin: EO submit → admin approve
+  r = await req(`/api/organizer/events/${qev.id}/submit`, { method: "POST" });
+  check("submit -> SUBMITTED", r.data?.event?.status === "SUBMITTED", `(${r.data?.event?.status})`);
+  r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "admin" } });
+  r = await req(`/api/organizer/events/${qev.id}/publish`, { method: "POST", body: { decision: "approve" } });
+  check("admin approve -> PUBLISHED", r.data?.event?.status === "PUBLISHED", `(${r.data?.event?.status})`);
+  // EO tidak bisa publish sendiri
+  r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "organizer" } });
+  r = await req(`/api/organizer/events/${qev.id}/publish`, { method: "POST", body: { decision: "approve" } });
+  check("EO ditolak publish sendiri (403)", r.status === 403, `(${r.status})`);
   // peserta 1 (Putri) masuk
   r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "participant" } });
   r = await req(`/api/events/${qev.id}/join`, { method: "POST" });
@@ -242,12 +251,14 @@ if (delEv?.id) {
   check("draft terhapus", r.data?.ok === true, `(${r.status} ${r.data?.error?.code ?? ""})`);
   r = await req(`/api/organizer/events/${delEv.id}`, { method: "DELETE" });
   check("hapus lagi -> 404", r.status === 404, `(${r.status})`);
-  // published tidak bisa dihapus
+  // published tidak bisa dihapus — submit + admin approve dulu
   r = await req("/api/organizer/events", { method: "POST", body: { name: `Draft Publikasi ${Date.now()}` } });
   const pubEv = r.data.event;
   if (pubEv?.id) {
-    const pubRes = await req(`/api/organizer/events/${pubEv.id}/publish`, { method: "POST", body: { status: "PUBLISHED" } });
-    check("publish set PUBLISHED", pubRes.status === 200 && pubRes.data?.event?.status === "PUBLISHED", `(${pubRes.status} ${JSON.stringify(pubRes.data)})`);
+    await req(`/api/organizer/events/${pubEv.id}/submit`, { method: "POST" });
+    r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "admin" } });
+    const pubRes = await req(`/api/organizer/events/${pubEv.id}/publish`, { method: "POST", body: { decision: "approve" } });
+    check("admin approve -> PUBLISHED", pubRes.status === 200 && pubRes.data?.event?.status === "PUBLISHED", `(${pubRes.status} ${JSON.stringify(pubRes.data)})`);
     r = await req(`/api/organizer/events/${pubEv.id}`, { method: "DELETE" });
     check("event PUBLISHED tidak bisa dihapus (409)", r.status === 409, `(${r.status} ${r.data?.error?.code ?? ""})`);
   }

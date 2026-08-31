@@ -82,7 +82,7 @@ export default function EventSetupPage() {
   });
 
   const publish = useMutation({
-    mutationFn: () => api(`/api/organizer/events/${id}/publish`, { method: "POST", body: JSON.stringify({ status: "PUBLISHED" }) }),
+    mutationFn: () => api(`/api/organizer/events/${id}/submit`, { method: "POST" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["org-event", id] }),
   });
 
@@ -104,15 +104,25 @@ export default function EventSetupPage() {
           <div className="section-kicker">{e.organization?.name}</div>
           <h1 className="section-title flex items-center gap-3">{identity.logoEmoji ?? "🎪"} {e.name}</h1>
           <div className="mt-2 flex items-center gap-2">
-            {e.status === "PUBLISHED" ? <Badge tone="success">● {t("org.published")}</Badge> : <Badge>{t("org.draft")}</Badge>}
+            {e.status === "PUBLISHED" ? (
+              <Badge tone="success">● {t("org.published")}</Badge>
+            ) : e.status === "SUBMITTED" ? (
+              <Badge tone="accent">⏳ {t("org.pendingReview")}</Badge>
+            ) : e.status === "REJECTED" ? (
+              <Badge>✕ {t("org.rejected")}</Badge>
+            ) : (
+              <Badge>{t("org.draft")}</Badge>
+            )}
             <Link href={`/events/${e.slug}`} className="flex items-center gap-1 text-xs font-semibold text-brand hover:underline">
               <ExternalLink className="h-3 w-3" /> /events/{e.slug}
             </Link>
           </div>
         </div>
-        <Button variant="accent" onClick={() => publish.mutate()} loading={publish.isPending}>
-          <Rocket className="h-4 w-4" /> {e.status === "PUBLISHED" ? t("org.published") : t("org.publish")}
-        </Button>
+        {e.status === "DRAFT" && (
+          <Button variant="accent" onClick={() => publish.mutate()} loading={publish.isPending}>
+            <Rocket className="h-4 w-4" /> {t("org.submitReview")}
+          </Button>
+        )}
       </div>
 
       <div className="space-y-4">
