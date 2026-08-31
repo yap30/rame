@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Check, Lock, MapPin, Sparkles } from "lucide-react";
-import { api, useT } from "@/lib/client";
-import { useThemeEffect } from "@/lib/client";
+import { api, useT, useThemeEffect, localizeLabel } from "@/lib/client";
+import { useUiStore } from "@/lib/ui-store";
 import { Badge, FadeUp, ProgressBar, Spinner } from "@/components/ui";
 import { motion } from "framer-motion";
 
 interface MapData {
-  event: { id: string; slug: string; name: string; journeyMode: string; journeyModeLabel: string; identity: Record<string, unknown>; joined: boolean };
+  event: { id: string; slug: string; name: string; journeyMode: string; journeyModeLabel: string | { id: string; en: string }; identity: Record<string, unknown>; joined: boolean };
   journey: {
     nodes: { id: string; activityId: string; position: number; title: string; description: string | null; icon: string; xpReward: number; stamp: { id: string; name: string; emoji: string } | null; done: boolean; locked: boolean }[];
     edges: { from: string; to: string; required: boolean; label: string | null }[];
@@ -23,6 +23,7 @@ interface MapData {
 export default function ExperienceMapPage() {
   const { slug } = useParams<{ slug: string }>();
   const t = useT();
+  const lang = useUiStore((s) => s.lang);
 
   const { data, isLoading } = useQuery({ queryKey: ["event", slug], queryFn: () => api<MapData>(`/api/events/${slug}`) });
   useThemeEffect(data?.event.identity);
@@ -104,7 +105,7 @@ export default function ExperienceMapPage() {
       <div className="mt-8 flex items-start gap-2 rounded-2xl bg-ink/5 p-4 text-xs text-ink/55">
         <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         <span>
-          {data.event.name} · {t("event.journeyMode")}: <strong>{data.event.journeyModeLabel}</strong> — {t("journey.branchingNote")}
+          {data.event.name} · {t("event.journeyMode")}: <strong>{localizeLabel(data.event.journeyModeLabel, lang)}</strong> — {t("journey.branchingNote")}
         </span>
       </div>
     </div>

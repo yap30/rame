@@ -21,6 +21,13 @@ export function useThemeEffect(identity?: Record<string, unknown> | null) {
   }, [identity, setIdentity]);
 }
 
+/** Label bilingual {id,en} dari API → string sesuai bahasa aktif */
+export function localizeLabel(label: string | { id: string; en: string } | null | undefined, lang?: string): string {
+  if (!label) return "—";
+  if (typeof label === "string") return label;
+  return label[lang === "en" ? "en" : "id"] ?? label.id;
+}
+
 /** Hook yang selalu menjaga a11y settings tetap terpasang */
 export function useA11y() {
   const identity = useUiStore((s) => s.identity);

@@ -5,7 +5,8 @@ import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, QrCode, RefreshCw, Upload } from "lucide-react";
-import { api, useT } from "@/lib/client";
+import { api, useT, localizeLabel } from "@/lib/client";
+import { useUiStore } from "@/lib/ui-store";
 import { Badge, Button, FadeUp, Spinner } from "@/components/ui";
 import { motion } from "framer-motion";
 
@@ -19,7 +20,7 @@ interface ActivityData {
     description: string | null;
     type: string;
     completionMethod: string;
-    completionMethodLabel: string;
+    completionMethodLabel: string | { id: string; en: string };
     verificationRequired: boolean;
     repeatable: boolean;
     xpReward: number;
@@ -41,6 +42,7 @@ interface ActivityData {
 export default function ActivityPage() {
   const { id } = useParams<{ id: string }>();
   const t = useT();
+  const lang = useUiStore((s) => s.lang);
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({ queryKey: ["activity", id], queryFn: () => api<ActivityData>(`/api/activities/${id}`) });
@@ -92,7 +94,7 @@ export default function ActivityPage() {
             <div className="text-xs font-bold uppercase tracking-widest text-accent">{a.eventName}</div>
             <h1 className="font-display text-3xl font-bold">{a.title}</h1>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Badge tone="brand">{a.completionMethodLabel}</Badge>
+              <Badge tone="brand">{localizeLabel(a.completionMethodLabel, lang)}</Badge>
               <Badge>⚡ {a.xpReward} XP</Badge>
               {a.stamp && <Badge tone="accent">{a.stamp.emoji} {a.stamp.name}</Badge>}
               {a.repeatable ? <Badge>{t("activity.repeatable")}</Badge> : <Badge>{t("activity.notRepeatable")}</Badge>}

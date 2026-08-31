@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, CalendarDays, Check, Lock, Map as MapIcon, MapPin, StampIcon, Trophy, Users } from "lucide-react";
-import { api, useT } from "@/lib/client";
-import { useThemeEffect } from "@/lib/client";
+import { api, useT, useThemeEffect, localizeLabel } from "@/lib/client";
+import { useUiStore } from "@/lib/ui-store";
 import { Badge, Button, FadeUp, Spinner } from "@/components/ui";
 import { motion } from "framer-motion";
 
@@ -20,7 +20,7 @@ interface EventDetail {
     city: string | null;
     status: string;
     journeyMode: string;
-    journeyModeLabel: string;
+    journeyModeLabel: string | { id: string; en: string };
     startsAt: string | null;
     endsAt: string | null;
     identity: Record<string, unknown>;
@@ -45,6 +45,7 @@ interface EventDetail {
 export default function EventStoryPage() {
   const { slug } = useParams<{ slug: string }>();
   const t = useT();
+  const lang = useUiStore((s) => s.lang);
   const router = useRouter();
   const qc = useQueryClient();
 
@@ -82,7 +83,7 @@ export default function EventStoryPage() {
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-stamp" style={{ background: "rgb(var(--rame-accent))", color: "#fff" }}>
                 {(event.identity.logoEmoji as string) ?? "🎪"}
               </span>
-              <Badge tone="brand">{event.journeyModeLabel}</Badge>
+              <Badge tone="brand">{localizeLabel(event.journeyModeLabel, lang)}</Badge>
               <Badge>{event.city}</Badge>
               {event.status === "PUBLISHED" ? <Badge tone="success">● {t("org.published")}</Badge> : <Badge tone="neutral">{t("org.draft")}</Badge>}
             </div>
@@ -222,7 +223,7 @@ export default function EventStoryPage() {
               <div className="text-sm font-bold">{event.venue?.name ?? "—"}</div>
               {event.venue?.address && <div className="text-xs text-ink/55">{event.venue.address}</div>}
               <div className="label mt-4">{t("event.journeyMode")}</div>
-              <div className="text-sm font-bold">{event.journeyModeLabel}</div>
+              <div className="text-sm font-bold">{localizeLabel(event.journeyModeLabel, lang)}</div>
             </div>
           </FadeUp>
 
