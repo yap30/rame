@@ -19,6 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     repeatable?: boolean;
     xpReward?: number;
     icon?: string;
+    stampId?: string | null;
     config?: Record<string, unknown>;
     templateId?: string;
   };
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       repeatable: Boolean(body.repeatable),
       xpReward: Number(body.xpReward ?? 0),
       icon: body.icon ?? "🎯",
+      stampId: body.stampId ? String(body.stampId) : null,
       sortOrder: count,
       configJson: (body.config ?? {}) as object,
     },

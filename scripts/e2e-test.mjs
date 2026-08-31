@@ -276,5 +276,17 @@ if (saSid) {
   check("sesi admin aktif", r.data?.user?.role === "ADMIN", `(${r.data?.user?.role})`);
 }
 
+console.log("▶ 17. Aktivitas baru: stempel tersimpan (regresi stampId)");
+r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "organizer" } });
+r = await req(`/api/organizer/events/${ev2.data.event.id}/stamps`, { method: "POST", body: { name: "Stempel Tes", emoji: "⭐" } });
+const newStampId = r.data?.stamp?.id;
+if (newStampId) {
+  r = await req(`/api/organizer/events/${ev2.data.event.id}/activities`, { method: "POST", body: { title: `Aktivitas Stempel ${Date.now()}`, type: "CUSTOM", completionMethod: "AUTO", stampId: newStampId } });
+  const stActId = r.data?.activity?.id;
+  const bundle = await req(`/api/organizer/events/${ev2.data.event.id}`);
+  const stAct = bundle.data.activities?.find((a) => a.id === stActId);
+  check("stampId tersimpan di aktivitas baru", stAct?.stampId === newStampId, `(${stAct?.stampId} vs ${newStampId})`);
+}
+
 console.log(`\n=== HASIL: ${pass} lulus, ${fail} gagal ===`);
 process.exit(fail > 0 ? 1 : 0);
