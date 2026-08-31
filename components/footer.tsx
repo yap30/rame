@@ -17,10 +17,13 @@ export function Footer() {
             {identity?.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={identity.logoUrl} alt="" className="h-8 w-8 rounded-lg border border-ink/10 object-cover" />
-            ) : (
+            ) : identity?.eventShortName ? (
               <span className="flex h-8 w-8 items-center justify-center rounded-lg text-base font-bold" style={{ background: brand, color: "#fff" }}>
                 {identity?.logoEmoji ?? "◆"}
               </span>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/logo.png" alt="RAME" className="h-8 w-8 rounded-lg" />
             )}
             <span className="font-display text-lg font-bold" style={{ color: brand }}>
               {identity?.eventShortName ?? "RAME"}

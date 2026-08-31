@@ -16,7 +16,7 @@ export async function findOrCreateUserByEid(profile: EidProfile): Promise<{ user
   if (!user) {
     user = await prisma.user.create({
       data: {
-        name: profile.name ?? profile.email ?? "Peserta e.id",
+        name: profile.name ?? (profile.email ? profile.email.split("@")[0] : "Peserta"),
         email: profile.email,
         role: "PARTICIPANT",
         avatarUrl: "",

@@ -122,6 +122,10 @@ export class EidOAuthAdapter implements OAuthAdapter {
       if (!profileRes.ok) throw mapProviderError({ status: profileRes.status }, EidErrorCodes.UNAUTHORIZED);
       const profileBody = (await profileRes.json()) as EidEnvelope;
       const pd = (profileBody.data ?? {}) as { email?: string; profile?: { fullname?: string; phonenumber?: string; tier?: number; avatar?: string } };
+      // Trust Level e.id (docs.e.id/en/oauth-sso): 0=Unverified, 1=Basic, 2=Moderate.
+      // Disimpan internal (identity metadata) — bukan level credential RAME.
+      const TIER_LABELS: Record<number, string> = { 0: "Unverified", 1: "Basic", 2: "Moderate" };
+      const tier: string | undefined = typeof pd.profile?.tier === "number" ? (TIER_LABELS[pd.profile.tier] ?? undefined) : undefined;
 
       const email = pd.email ?? "";
       const p = pd.profile ?? {};
@@ -131,7 +135,7 @@ export class EidOAuthAdapter implements OAuthAdapter {
         subject,
         email: email || undefined,
         name: p.fullname || undefined,
-        trustLevel: typeof p.tier === "number" ? `Tier ${p.tier}` : undefined,
+        trustLevel: tier,
         raw: profileBody as unknown as Record<string, unknown>,
       };
       return { token, profile };

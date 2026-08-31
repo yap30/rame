@@ -15,7 +15,7 @@ interface Me {
     email?: string | null;
     role: string;
     orgId?: string | null;
-    eid?: { subject: string; trustLevel?: string | null } | null;
+    eidConnected?: boolean;
   } | null;
   eid: { mode: string; label: string; real: boolean };
 }
@@ -81,27 +81,26 @@ export function Nav() {
   };
 
   // sebelum login, daftar event sudah tersedia di beranda — sembunyikan menu Event
-  const links = me?.user
-    ? [
-        { href: "/", label: t("nav.home") },
-        { href: "/events", label: t("nav.events") },
-      ]
-    : [{ href: "/", label: t("nav.home") }];
+  // (menu Beranda dihapus: kembali ke beranda via logo di kiri)
+  const links = me?.user ? [{ href: "/events", label: t("nav.events") }] : [];
 
   return (
     <header className="sticky top-0 z-40 border-b border-ink/10 backdrop-blur-md" style={{ background: "rgb(var(--rame-paper) / 0.85)" }}>
       <div className="rame-container flex h-16 items-center justify-between gap-3">
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href="/" className="flex items-center gap-2.5" aria-label="Beranda">
           {identity?.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={identity.logoUrl} alt="" className="h-9 w-9 rounded-xl border border-ink/10 object-cover" />
-          ) : (
+          ) : identity?.eventShortName ? (
             <span
               className="flex h-9 w-9 items-center justify-center rounded-xl text-lg font-bold shadow-lift"
               style={{ background: brand, color: brandInk }}
             >
               {emoji}
             </span>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/logo.png" alt="RAME" className="h-9 w-9 rounded-xl" />
           )}
           <span className="font-display text-xl font-bold tracking-tight" style={{ color: brand }}>
             {identity?.eventShortName ?? "RAME"}

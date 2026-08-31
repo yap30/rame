@@ -113,9 +113,6 @@ function JoinInner() {
             </span>
             <h1 className="font-display text-2xl font-bold">{t("auth.loginQr")}</h1>
             <p className="mt-2 text-sm text-ink/60">{t("auth.loginQrSub")}</p>
-            <div className="mt-3 flex justify-center">
-              <Badge tone={eid.real ? "brand" : "accent"}>{eid.label}</Badge>
-            </div>
           </div>
 
           {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}

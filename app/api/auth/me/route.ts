@@ -25,13 +25,9 @@ export async function GET() {
       email: user.email,
       role: user.role,
       orgId: session.orgId ?? null,
-      eid: user.externalIdentities[0]
-        ? {
-            subject: user.externalIdentities[0].providerSubject,
-            trustLevel: (user.externalIdentities[0].profileJson as { trustLevel?: string } | null)?.trustLevel ?? null,
-          }
-        : null,
-      memberships: user.memberships.map((m) => ({ organizationId: m.organizationId, name: m.organization.name, role: m.role })),
+      // status koneksi e.id saja — DID/trust level tetap internal (dipakai
+      // integration credential issuance, bukan untuk UI participant).
+      eidConnected: Boolean(user.externalIdentities[0]),
     },
     eid: eidStatus(),
   });

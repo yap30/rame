@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Building2, Fingerprint, LayoutDashboard, LogOut, Shield, UserRound } from "lucide-react";
+import { Building2, LayoutDashboard, LogOut, Shield, UserRound } from "lucide-react";
 import { api, useT } from "@/lib/client";
 import { Badge } from "@/components/ui";
 import { useUiStore } from "@/lib/ui-store";
@@ -15,8 +15,7 @@ interface Me {
     email?: string | null;
     role: string;
     orgId?: string | null;
-    eid?: { subject: string; trustLevel?: string | null } | null;
-    memberships: { organizationId: string; name: string; role: string }[];
+    eidConnected?: boolean;
   } | null;
   eid: { mode: string; label: string; real: boolean };
 }
@@ -74,15 +73,14 @@ export default function ProfilePage() {
     <div className="rame-container max-w-2xl py-12">
       <div className="card !p-8">
         <div className="flex items-center gap-4">
-          <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand text-2xl font-bold text-brand-ink">
-            {u.name.charAt(0)}
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="" className="h-16 w-16 rounded-2xl border border-ink/10 bg-white object-contain p-1" />
           <div>
             <h1 className="font-display text-2xl font-bold">{u.name}</h1>
             <div className="text-sm text-ink/55">{u.email ?? "—"}</div>
             <div className="mt-1.5 flex gap-2">
               <Badge tone="brand">{u.role}</Badge>
-              <Badge tone="accent">{data.eid.label}</Badge>
+              {u.eidConnected && <Badge tone="success">✓ {t("auth.connected")}</Badge>}
             </div>
           </div>
         </div>
@@ -108,36 +106,15 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="mt-6 space-y-3 border-t border-ink/10 pt-6">
+        <div className="mt-6 border-t border-ink/10 pt-6">
           <div className="flex items-center gap-3">
-            <Fingerprint className="h-5 w-5 text-ink/40" />
+            <span className="text-lg">🪪</span>
             <div>
-              <div className="text-sm font-bold">{t("auth.provider")}</div>
-              <div className="font-mono text-xs text-ink/50">{u.eid?.subject ?? "did:idchain:…"}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <BadgeCheck className="h-5 w-5 text-ink/40" />
-            <div>
-              <div className="text-sm font-bold">{t("auth.trustLevel")}</div>
-              <div className="text-xs text-ink/50">{u.eid?.trustLevel ?? "—"}</div>
+              <div className="text-sm font-bold">{t("auth.connected")}</div>
+              <div className="text-xs text-ink/50">{t("auth.connectedSub")}</div>
             </div>
           </div>
         </div>
-
-        {u.memberships.length > 0 && (
-          <div className="mt-6">
-            <div className="label">{t("nav.organizer")}</div>
-            <div className="space-y-2">
-              {u.memberships.map((m) => (
-                <div key={m.organizationId} className="flex items-center justify-between rounded-xl border border-ink/10 bg-white/60 px-4 py-3 text-sm">
-                  <span className="font-semibold">{m.name}</span>
-                  <Badge>{m.role}</Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="mt-8 flex flex-wrap gap-2">
           {activeView === "organizer" && (

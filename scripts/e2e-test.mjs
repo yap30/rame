@@ -42,7 +42,10 @@ const qrNode = r.data.journey.nodes.find((n) => n.title.includes("Menara Jam"));
 check("5 node journey", r.data.journey.nodes.length === 5, `(${r.data.journey.nodes.length})`);
 check("5 stamps", r.data.stamps.length === 5);
 
-console.log("▶ 3. Join event");
+console.log("▶ 3. Join event (profil peserta)");
+r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "participant" } });
+r = await req("/api/auth/me");
+check("me: eidConnected (tanpa DID/trustLevel)", r.data?.user?.eidConnected === true && !r.data?.user?.eid, `(${JSON.stringify(r.data?.user)})`);
 r = await req(`/api/events/${ev.id}/join`, { method: "POST" });
 check("join ok", r.data?.joined === true);
 r = await req(`/api/events/${ev.id}/join`, { method: "POST" });
