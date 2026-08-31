@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BarChart3, History, LayoutDashboard, Lightbulb, Map, QrCode, ScanLine, Settings, Sparkles, StampIcon, Trophy } from "lucide-react";
 import { api, useT } from "@/lib/client";
-import { Spinner } from "@/components/ui";
+import { Button, Spinner } from "@/components/ui";
 
 interface Me {
   user: { id: string; name: string; role: string } | null;
@@ -17,16 +17,19 @@ export default function OrganizerLayout({ children, params }: { children: React.
   const pathname = usePathname();
   const router = useRouter();
   const qc = useQueryClient();
+  const [ensureError, setEnsureError] = useState<string | null>(null);
+  const attempted = useRef(false);
 
   const { data, isLoading } = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/api/auth/me") });
 
   // pilih "Buat Event" dari menu = aktifkan mode penyelenggara (tanpa pemetaan role saat daftar)
   const ensure = useMutation({
     mutationFn: () => api("/api/organizer/ensure", { method: "POST" }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["me"] });
+    onSuccess: async () => {
+      await qc.refetchQueries({ queryKey: ["me"] });
       router.refresh();
     },
+    onError: (err) => setEnsureError((err as Error)?.message ?? "Gagal menyiapkan akun penyelenggara."),
   });
 
   useEffect(() => {
@@ -35,18 +38,40 @@ export default function OrganizerLayout({ children, params }: { children: React.
       router.push("/join?next=/organizer");
       return;
     }
-    if (data.user.role !== "ORGANIZER" && !ensure.isPending) ensure.mutate();
+    if (data.user.role !== "ORGANIZER" && !ensure.isPending && !attempted.current) {
+      attempted.current = true;
+      setEnsureError(null);
+      ensure.mutate();
+    }
   }, [data, isLoading, router, ensure]);
 
   if (isLoading || !data?.user) {
     return <div className="rame-container flex justify-center py-24"><Spinner className="h-8 w-8" /></div>;
   }
   if (data.user.role !== "ORGANIZER") {
-    // sedang menyiapkan akun penyelenggara (ensure berjalan)
+    if (ensure.isPending) {
+      // sedang menyiapkan akun penyelenggara (ensure berjalan)
+      return (
+        <div className="rame-container flex max-w-md flex-col items-center gap-3 py-24 text-center">
+          <Spinner className="h-8 w-8" />
+          <div className="text-sm font-semibold text-ink/60">{t("org.ensuring")}</div>
+        </div>
+      );
+    }
+    // gagal — tampilkan pesan + tombol coba lagi (jangan spinner selamanya)
     return (
       <div className="rame-container flex max-w-md flex-col items-center gap-3 py-24 text-center">
-        <Spinner className="h-8 w-8" />
-        <div className="text-sm font-semibold text-ink/60">{t("org.ensuring")}</div>
+        <div className="text-4xl">⚠️</div>
+        <div className="text-sm font-semibold text-ink/60">{ensureError ?? "Gagal menyiapkan akun penyelenggara."}</div>
+        <Button
+          onClick={() => {
+            attempted.current = false;
+            setEnsureError(null);
+            ensure.mutate();
+          }}
+        >
+          Coba lagi
+        </Button>
       </div>
     );
   }

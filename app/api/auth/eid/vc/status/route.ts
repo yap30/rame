@@ -50,10 +50,12 @@ export async function GET(req: NextRequest) {
 
     // nama & email holder dari raw webhook bila ada (username e.id = email)
     const raw = (row.rawJson ?? {}) as { holderName?: string; holder_account?: { username?: string } };
-    const holderName = raw.holderName ?? raw.holder_account?.username;
     const holderEmail = raw.holder_account?.username;
+    const holderName = raw.holderName ?? holderEmail;
+    // username e.id berbentuk email — jangan jadikan nama mentah; pakai awalan email
+    const displayName = holderName && holderName.includes("@") ? holderName.split("@")[0] : holderName;
 
-    const { user, orgId } = await findOrCreateUserByEidSubject(did, holderName || holderEmail ? { name: holderName, email: holderEmail } : undefined);
+    const { user, orgId } = await findOrCreateUserByEidSubject(did, displayName || holderEmail ? { name: displayName, email: holderEmail } : undefined);
     if (!row.userId) {
       await prisma.authLoginSession.update({ where: { id: row.id }, data: { userId: user.id } });
     }

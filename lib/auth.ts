@@ -34,6 +34,13 @@ export async function findOrCreateUserByEid(profile: EidProfile): Promise<{ user
     user = await prisma.user.update({ where: { id: user.id }, data: { email: profile.email } });
   }
 
+  // self-heal nama: user lama yg dibuat dgn fallback ("Peserta e.id") → nama dari
+  // metadata e.id (fullname OAuth / awalan email) agar profile menampilkan nama asli.
+  if ((user.name === "Peserta e.id" || user.name === "Peserta" || !user.name) && profile.email) {
+    const nameFromMeta = profile.name && !profile.name.includes("@") ? profile.name : profile.email.split("@")[0];
+    user = await prisma.user.update({ where: { id: user.id }, data: { name: nameFromMeta } });
+  }
+
   // Super Admin: email yang terverifikasi via e.id tercantum di SUPER_ADMIN_EMAILS
   // (env produksi) → naikkan role ke ADMIN. Aman: identitas datang dari verifikasi e.id,
   // bukan klaim klien.

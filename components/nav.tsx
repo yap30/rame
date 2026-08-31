@@ -78,6 +78,8 @@ export function Nav() {
     setRoleOpen(false);
     setOpen(false);
     router.refresh();
+    // segarkan chip profil (nama/role terbaru di sesi baru)
+    api<Me>("/api/auth/me").then(setMe).catch(() => {});
   };
 
   // sebelum login, daftar event sudah tersedia di beranda — sembunyikan menu Event
@@ -160,40 +162,61 @@ export function Nav() {
 
           {me?.user ? (
             <>
-              {/* pemilih peran (desktop) */}
+              {/* chip profil + dropdown peran menyatu (desktop) */}
               <div className="relative hidden sm:block">
                 <button
                   onClick={() => setRoleOpen((o) => !o)}
-                  className="btn-ghost !px-3 !py-1.5 text-xs font-bold"
-                  aria-label="Pilih peran"
+                  className="flex items-center gap-2 rounded-full border border-ink/15 py-1 pl-1 pr-3 transition hover:bg-ink/5"
+                  aria-label="Menu profil & peran"
                 >
-                  {roleLabel} <ChevronDown className="h-3.5 w-3.5" />
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold" style={{ background: brand, color: brandInk }}>
+                    {me.user.name.charAt(0)}
+                  </span>
+                  <span className="text-sm font-semibold">{me.user.name.split(" ")[0]}</span>
+                  <span className="hidden text-xs font-medium text-ink/45 lg:inline">{roleLabel}</span>
+                  <ChevronDown className={`h-3.5 w-3.5 text-ink/45 transition ${roleOpen ? "rotate-180" : ""}`} />
                 </button>
                 {roleOpen && (
-                  <div className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-xl border border-ink/10 bg-white shadow-lift">
-                    <button onClick={() => pickRole("participant")} className={`block w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-ink/5 ${effectiveView === "participant" ? "bg-brand/10 text-brand" : ""}`}>
+                  <div className="absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-xl border border-ink/10 bg-white shadow-lift">
+                    <div className="border-b border-ink/10 px-4 py-3">
+                      <div className="truncate text-sm font-bold">{me.user.name}</div>
+                      <div className="truncate text-xs text-ink/50">{me.user.email ?? "—"}</div>
+                    </div>
+                    <button onClick={() => pickRole("participant")} className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold hover:bg-ink/5 ${effectiveView === "participant" ? "bg-brand/10 text-brand" : ""}`}>
                       🧑 {t("role.participant")}
                     </button>
-                    <button onClick={() => pickRole("organizer")} className={`block w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-ink/5 ${effectiveView === "organizer" ? "bg-brand/10 text-brand" : ""}`}>
+                    <button onClick={() => pickRole("organizer")} className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold hover:bg-ink/5 ${effectiveView === "organizer" ? "bg-brand/10 text-brand" : ""}`}>
                       🏢 {t("role.organizer")}
                     </button>
                     <button
                       onClick={() => pickRole("admin")}
                       disabled={role !== "ADMIN"}
                       title={role !== "ADMIN" ? "Khusus role Admin" : undefined}
-                      className={`block w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-ink/5 ${effectiveView === "admin" ? "bg-brand/10 text-brand" : ""} ${role !== "ADMIN" ? "cursor-not-allowed opacity-40" : ""}`}
+                      className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold hover:bg-ink/5 ${effectiveView === "admin" ? "bg-brand/10 text-brand" : ""} ${role !== "ADMIN" ? "cursor-not-allowed opacity-40" : ""}`}
                     >
                       🛡️ {t("role.admin")}
                     </button>
+                    <div className="border-t border-ink/10 p-1.5">
+                      <Link href="/profile" onClick={() => setRoleOpen(false)} className="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-ink/5">
+                        👤 {t("profile.title") ?? "Profile"}
+                      </Link>
+                      <button
+                        onClick={async () => {
+                          await fetch("/api/auth/logout", { method: "POST" });
+                          qc.clear();
+                          setMe(null);
+                          setRoleOpen(false);
+                          router.push("/");
+                          router.refresh();
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
+                      >
+                        <LogOut className="h-4 w-4" /> {t("common.logout")}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
-              <Link href="/profile" className="hidden items-center gap-2 rounded-full border border-ink/15 py-1 pl-1 pr-3 hover:bg-ink/5 sm:flex">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold" style={{ background: brand, color: brandInk }}>
-                  {me.user.name.charAt(0)}
-                </span>
-                <span className="text-sm font-semibold">{me.user.name.split(" ")[0]}</span>
-              </Link>
             </>
           ) : (
             <Link href="/join" className="btn-primary !px-4 !py-2 text-xs">
