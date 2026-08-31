@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BadgeCheck, Fingerprint, LayoutDashboard, LogOut } from "lucide-react";
 import { api, useT } from "@/lib/client";
 import { Badge } from "@/components/ui";
@@ -23,6 +23,7 @@ interface Me {
 export default function ProfilePage() {
   const t = useT();
   const router = useRouter();
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/api/auth/me") });
 
   if (isLoading) return <div className="rame-container py-20 text-center text-sm text-ink/50">{t("common.loading")}</div>;
@@ -95,6 +96,7 @@ export default function ProfilePage() {
           <button
             onClick={async () => {
               await fetch("/api/auth/logout", { method: "POST" });
+              qc.clear(); // buang cache personal agar tidak bocor ke user lain
               router.push("/");
               router.refresh();
             }}

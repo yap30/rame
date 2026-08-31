@@ -47,6 +47,10 @@ export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    // sesi kedaluwarsa/ditolak → beri tahu AuthSync untuk cek ulang & buang cache
+    if (res.status === 401 && typeof window !== "undefined") {
+      window.dispatchEvent(new Event("rame:auth-changed"));
+    }
     const msg = (data as { error?: { message?: string } })?.error?.message ?? "Terjadi kesalahan";
     const code = (data as { error?: { code?: string } })?.error?.code ?? "UNKNOWN";
     const err = new Error(msg) as Error & { code: string; status: number };

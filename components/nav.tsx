@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Languages, LayoutDashboard, LogOut, Menu, Shield, Sparkles, X } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useUiStore } from "@/lib/ui-store";
 import { api, useT } from "@/lib/client";
 
@@ -23,6 +24,7 @@ export function Nav() {
   const t = useT();
   const pathname = usePathname();
   const router = useRouter();
+  const qc = useQueryClient();
   const lang = useUiStore((s) => s.lang);
   const setLang = useUiStore((s) => s.setLang);
   const identity = useUiStore((s) => s.identity);
@@ -158,6 +160,7 @@ export function Nav() {
               <button
                 onClick={async () => {
                   await fetch("/api/auth/logout", { method: "POST" });
+                  qc.clear(); // buang cache personal agar tidak bocor ke user lain
                   setMe(null);
                   setOpen(false);
                   router.push("/");
