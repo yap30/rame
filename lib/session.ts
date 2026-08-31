@@ -4,6 +4,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
+import prisma from "@/lib/db";
 
 export const SESSION_COOKIE = "rame_session";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 hari
@@ -40,7 +41,11 @@ export async function readSession(): Promise<SessionPayload | null> {
     const token = store.get(SESSION_COOKIE)?.value;
     if (!token) return null;
     const { payload } = await jwtVerify(token, secretKey(), { algorithms: ["HS256"] });
-    return { sub: String(payload.sub), role: String(payload.role ?? "PARTICIPANT"), orgId: payload.orgId ? String(payload.orgId) : undefined };
+    const session: SessionPayload = { sub: String(payload.sub), role: String(payload.role ?? "PARTICIPANT"), orgId: payload.orgId ? String(payload.orgId) : undefined };
+    // user SUSPENDED tidak boleh mengakses fitur yang butuh autentikasi (blokir total)
+    const user = await prisma.user.findUnique({ where: { id: session.sub }, select: { status: true } });
+    if (user?.status === "SUSPENDED" || user?.status === "DISABLED") return null;
+    return session;
   } catch {
     return null;
   }

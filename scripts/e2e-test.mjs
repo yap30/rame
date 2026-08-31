@@ -309,5 +309,73 @@ check("stats: participants >= 1", r.data?.stats?.participants >= 1, `(${r.data?.
 check("stats: stamps >= 1", r.data?.stats?.stamps >= 1, `(${r.data?.stats?.stamps})`);
 check("stats: xp >= 1", r.data?.stats?.xp >= 1, `(${r.data?.stats?.xp})`);
 
+console.log("▶ 19. Admin P1: suspend user, revoke kredensial, laporan");
+r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "admin" } });
+// ambil user participant (Putri)
+r = await req("/api/admin/users");
+const putri = r.data?.users?.find((u) => u.email === "putri@semilir.id");
+check("user Putri ditemukan", Boolean(putri), `(${r.data?.users?.length} users)`);
+if (putri?.id) {
+  // suspend (tanpa alasan -> 400)
+  r = await req(`/api/admin/users/${putri.id}/status`, { method: "PATCH", body: { status: "SUSPENDED" } });
+  check("suspend tanpa alasan -> 400", r.status === 400, `(${r.status})`);
+  // suspend dengan alasan
+  r = await req(`/api/admin/users/${putri.id}/status`, { method: "PATCH", body: { status: "SUSPENDED", reason: "Melanggar aturan komunitas" } });
+  check("suspend ok", r.status === 200 && r.data?.user?.status === "SUSPENDED", `(${r.status} ${JSON.stringify(r.data)})`);
+  // audit log tercatat
+  r = await req("/api/admin/users");
+  const suspended = r.data?.users?.find((u) => u.id === putri.id);
+  check("status user = SUSPENDED + reason", suspended?.status === "SUSPENDED" && suspended?.suspendReason === "Melanggar aturan komunitas", `(${suspended?.status})`);
+  // login participant diblokir
+  r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "participant" } });
+  check("login participant diblokir (403)", r.status === 403 && r.data?.error?.code === "ACCOUNT_SUSPENDED", `(${r.status} ${r.data?.error?.code})`);
+  // unsuspend dulu
+  r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "admin" } });
+  r = await req(`/api/admin/users/${putri.id}/status`, { method: "PATCH", body: { status: "ACTIVE" } });
+  check("unsuspend (fase 1)", r.status === 200 && r.data?.user?.status === "ACTIVE", `(${r.status})`);
+  // sesi participant VALID dibuat, lalu suspend lagi → sesi lama harus diblokir
+  r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "participant" } });
+  check("login participant OK setelah unsuspend", r.status === 200 && r.data?.user?.id, `(${r.status})`);
+  const partCookie = cookie; // sesi participant valid
+  r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "admin" } });
+  r = await req(`/api/admin/users/${putri.id}/status`, { method: "PATCH", body: { status: "SUSPENDED", reason: "Melanggar aturan komunitas" } });
+  check("suspend lagi", r.status === 200, `(${r.status})`);
+  cookie = partCookie; // pakai sesi participant lama → harus diblokir readSession
+  r = await req("/api/auth/me");
+  check("sesi lama diblokir (user:null)", r.data?.user === null, `(${JSON.stringify(r.data?.user)})`);
+  r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "admin" } });
+  // unsuspend
+  r = await req(`/api/admin/users/${putri.id}/status`, { method: "PATCH", body: { status: "ACTIVE" } });
+  check("unsuspend ok", r.status === 200 && r.data?.user?.status === "ACTIVE", `(${r.status})`);
+  // login kembali berhasil
+  r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "participant" } });
+  check("login kembali OK", r.status === 200 && r.data?.user?.id, `(${r.status})`);
+  // notifikasi masuk ke user
+  r = await req("/api/notifications");
+  check("notifikasi suspend & pulih tampil", (r.data?.notifications ?? []).length >= 2, `(${r.data?.notifications?.length})`);
+}
+
+// revoke kredensial (lokal)
+r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "admin" } });
+r = await req("/api/admin/credentials");
+const cred = r.data?.credentials?.[0];
+if (cred) {
+  r = await req(`/api/admin/credentials/${cred.id}/revoke`, { method: "POST", body: { reason: "Permintaan peserta" } });
+  check("revoke lokal ok", r.data?.credential?.status === "REVOKED" && r.data?.credential?.localOnly === true, `(${JSON.stringify(r.data?.credential)})`);
+}
+
+// laporan: participant buat, admin resolve
+r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "participant" } });
+r = await req("/api/reports", { method: "POST", body: { targetType: "EVENT", targetId: ev2.data.event.id, category: "Penipuan", description: "Tes laporan" } });
+check("laporan dibuat", r.status === 201 && r.data?.report?.status === "OPEN", `(${r.status})`);
+const reportId = r.data?.report?.id;
+r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "admin" } });
+r = await req("/api/admin/reports");
+check("laporan terlihat admin", (r.data?.reports ?? []).some((x) => x.id === reportId), `(${r.data?.reports?.length})`);
+if (reportId) {
+  r = await req(`/api/admin/reports/${reportId}`, { method: "PATCH", body: { status: "RESOLVED", resolution: "Ditindaklanjuti" } });
+  check("laporan resolve", r.data?.report?.status === "RESOLVED", `(${r.data?.report?.status})`);
+}
+
 console.log(`\n=== HASIL: ${pass} lulus, ${fail} gagal ===`);
 process.exit(fail > 0 ? 1 : 0);

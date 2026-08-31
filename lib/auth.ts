@@ -6,7 +6,7 @@ import prisma from "./db";
 import { createSessionToken, SessionPayload } from "./session";
 import { EidProfile } from "./eid/types";
 
-export async function findOrCreateUserByEid(profile: EidProfile): Promise<{ user: { id: string; name: string; email: string | null; role: string }; orgId?: string }> {
+export async function findOrCreateUserByEid(profile: EidProfile): Promise<{ user: { id: string; name: string; email: string | null; role: string; status: string; suspendReason: string | null }; orgId?: string }> {
   const ext = await prisma.externalIdentity.findUnique({
     where: { provider_providerSubject: { provider: "e.id", providerSubject: profile.subject } },
     include: { user: true },
@@ -63,7 +63,7 @@ export async function findOrCreateUserByEid(profile: EidProfile): Promise<{ user
     orgId = membership?.organizationId;
   }
 
-  return { user: { id: user.id, name: user.name, email: user.email, role: user.role }, orgId };
+  return { user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status, suspendReason: user.suspendReason }, orgId };
 }
 
 export async function issueSession(userId: string, role: string, orgId?: string): Promise<string> {
@@ -72,6 +72,19 @@ export async function issueSession(userId: string, role: string, orgId?: string)
 }
 
 export async function demoLogin(kind: "participant" | "organizer" | "admin") {
+  // blokir login utk akun yang disuspend
+  const blocked = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: kind === "participant" ? "putri@semilir.id" : kind === "organizer" ? "rara@semilir.id" : "admin@rame.id" },
+        { id: kind === "participant" ? "user-putri" : kind === "organizer" ? "user-rara" : "user-admin" },
+      ],
+      status: { in: ["SUSPENDED", "DISABLED"] },
+    },
+  });
+  if (blocked) {
+    throw new Error(blocked.suspendReason ? `ACCOUNT_SUSPENDED:${blocked.suspendReason}` : "ACCOUNT_SUSPENDED");
+  }
   const profile: EidProfile =
     kind === "organizer"
       ? { subject: "did:idchain:demo:rara", email: "rara@semilir.id", name: "Rara Semilir", trustLevel: "Moderate — Tier 2" }

@@ -56,6 +56,13 @@ export async function GET(req: NextRequest) {
     const displayName = holderName && holderName.includes("@") ? holderName.split("@")[0] : holderName;
 
     const { user, orgId } = await findOrCreateUserByEidSubject(did, displayName || holderEmail ? { name: displayName, email: holderEmail } : undefined);
+    // akun disuspend → tolak login (blokir total)
+    if (user.status === "SUSPENDED" || user.status === "DISABLED") {
+      return Response.json(
+        { ok: false, status: "SUSPENDED", authenticated: false, message: user.suspendReason ? `Akun Anda sedang disuspend: ${user.suspendReason}` : "Akun Anda sedang disuspend. Hubungi dukungan untuk info lebih lanjut." },
+        { status: 403 }
+      );
+    }
     if (!row.userId) {
       await prisma.authLoginSession.update({ where: { id: row.id }, data: { userId: user.id } });
     }

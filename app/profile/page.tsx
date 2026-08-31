@@ -27,6 +27,10 @@ export default function ProfilePage() {
   const view = useUiStore((s) => s.view);
   const setView = useUiStore((s) => s.setView);
   const { data, isLoading } = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/api/auth/me") });
+  const { data: notifData } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => api<{ notifications: { id: string; type: string; title: string; body: string; read: boolean; createdAt: string }[] }>("/api/notifications"),
+  });
 
   // pilih "Event Organizer" padahal role masih participant → aktifkan EO dulu (ensure)
   const ensure = useMutation({
@@ -115,6 +119,21 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* notifikasi in-app */}
+        {(notifData?.notifications ?? []).length > 0 && (
+          <div className="mt-6 border-t border-ink/10 pt-6">
+            <div className="label">🔔 Notifikasi</div>
+            <div className="space-y-2">
+              {(notifData?.notifications ?? []).slice(0, 5).map((n) => (
+                <div key={n.id} className={`rounded-xl border px-4 py-3 text-sm ${n.read ? "border-ink/10 bg-white/40" : "border-brand/30 bg-brand/5"}`}>
+                  <div className="font-bold">{n.title}</div>
+                  <div className="mt-0.5 text-xs text-ink/60">{n.body}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-8 flex flex-wrap gap-2">
           {activeView === "organizer" && (

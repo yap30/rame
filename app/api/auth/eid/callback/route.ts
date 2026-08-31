@@ -27,6 +27,11 @@ export async function GET(req: NextRequest) {
   try {
     const { profile } = await getOAuth().exchangeCode(code);
     const { user, orgId } = await findOrCreateUserByEid(profile);
+    // akun disuspend → tolak login (blokir total)
+    if (user.status === "SUSPENDED" || user.status === "DISABLED") {
+      const msg = user.suspendReason ? `Akun Anda sedang disuspend: ${user.suspendReason}` : "Akun Anda sedang disuspend. Hubungi dukungan untuk info lebih lanjut.";
+      return NextResponse.redirect(new URL(`/join?error=${encodeURIComponent(msg)}`, req.url));
+    }
     const token = await issueSession(user.id, user.role, orgId);
 
     const res = NextResponse.redirect(new URL(next, req.url));

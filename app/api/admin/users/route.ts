@@ -22,6 +22,8 @@ export async function GET() {
       name: u.name,
       email: u.email,
       role: u.role,
+      status: u.status,
+      suspendReason: u.suspendReason,
       eidSubject: u.externalIdentities[0]?.providerSubject ?? null,
       orgs: u.memberships.map((m) => ({ name: m.organization.name, role: m.role })),
       createdAt: u.createdAt,

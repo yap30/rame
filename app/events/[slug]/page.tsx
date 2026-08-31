@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { ArrowRight, CalendarDays, Check, Lock, Map as MapIcon, MapPin, StampIcon, Trophy, Users } from "lucide-react";
 import { api, useT, useThemeEffect, localizeLabel } from "@/lib/client";
 import { useUiStore } from "@/lib/ui-store";
@@ -62,6 +63,12 @@ export default function EventStoryPage() {
 
   useThemeEffect(data?.event.identity);
 
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportCat, setReportCat] = useState("Konten tidak pantas");
+  const [reportDesc, setReportDesc] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportDone, setReportDone] = useState(false);
+
   const join = useMutation({
     mutationFn: () => api<{ joined: boolean; waitlisted?: boolean }>(`/api/events/${data?.event.id}/join`, { method: "POST" }),
     onSuccess: (res) => {
@@ -83,6 +90,7 @@ export default function EventStoryPage() {
   const collected = stamps.filter((s) => s.collected).length;
 
   return (
+    <>
     <div>
       {/* HERO */}
       <section className="relative overflow-hidden" style={{ background: "rgb(var(--rame-brand))" }}>
@@ -100,6 +108,12 @@ export default function EventStoryPage() {
               )}
               <Badge tone="brand">{localizeLabel(event.journeyModeLabel, lang)}</Badge>
               <Badge>{event.city}</Badge>
+              <button
+                onClick={() => setReportOpen(true)}
+                className="rounded-full border border-white/25 px-3 py-1 text-xs font-semibold text-white/70 transition hover:bg-white/10"
+              >
+                🚩 Laporkan
+              </button>
               {event.pricing?.model === "PAID" ? (
                 <Badge tone="accent">🎟️ Rp {(event.pricing.price ?? 0).toLocaleString("id-ID")}</Badge>
               ) : (
@@ -300,6 +314,48 @@ export default function EventStoryPage() {
         </aside>
       </div>
     </div>
+
+    {/* modal laporan */}
+    {reportOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={() => setReportOpen(false)}>
+        <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-lift" onClick={(e) => e.stopPropagation()}>
+          <div className="font-display text-lg font-bold">🚩 Laporkan event</div>
+          {reportDone ? (
+            <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">Laporan terkirim. Tim kami akan meninjaunya.</div>
+          ) : (
+            <>
+              <p className="mt-1 text-xs text-ink/55">Laporkan konten atau aktivitas yang bermasalah pada event ini.</p>
+              <select className="input mt-4" value={reportCat} onChange={(e) => setReportCat(e.target.value)}>
+                <option>Konten tidak pantas</option>
+                <option>Informasi menyesatkan</option>
+                <option>Penipuan</option>
+                <option>Pelanggaran lain</option>
+              </select>
+              <textarea className="input mt-3 min-h-[90px]" placeholder="Penjelasan (opsional)…" value={reportDesc} onChange={(e) => setReportDesc(e.target.value)} />
+              <div className="mt-4 flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setReportOpen(false)}>Batal</Button>
+                <Button
+                  variant="accent"
+                  loading={reportBusy}
+                  onClick={async () => {
+                    setReportBusy(true);
+                    try {
+                      await api("/api/reports", { method: "POST", body: JSON.stringify({ targetType: "EVENT", targetId: data?.event.id, category: reportCat, description: reportDesc }) });
+                      setReportDone(true);
+                    } catch {
+                      setReportBusy(false);
+                    }
+                  }}
+                >
+                  Kirim Laporan
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

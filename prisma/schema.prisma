@@ -27,6 +27,9 @@ model User {
   email       String?
   avatarUrl   String?
   role        String   @default("PARTICIPANT") // PARTICIPANT | ORGANIZER | ADMIN
+  status      String   @default("ACTIVE") // ACTIVE | SUSPENDED | DISABLED
+  suspendReason String?
+  suspendedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -41,6 +44,8 @@ model User {
   achievements           ParticipantAchievement[]
   credentialIssuances    CredentialIssuance[]
   feedbackResponses      FeedbackResponse[]
+  notifications          Notification[]
+  reports                Report[]
   eventLogs              EventLog[]
   qrSessions             QrSession[]
   authorizedDevices      ScannerDevice[]
@@ -497,6 +502,8 @@ model CredentialIssuance {
   eventId           String
   status            String    @default("ELIGIBLE") // ELIGIBLE | PENDING | ISSUED | FAILED | REVOKED
   providerReference String? // ref credential di e.id / tx hash
+  revokedAt         DateTime?
+  revokeReason      String?
   errorMessage      String?
   idempotencyKey    String    @unique
   createdAt         DateTime  @default(now())
@@ -570,6 +577,56 @@ model FeedbackAnswer {
 
   response FeedbackResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
   question FeedbackQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Admin: Audit / Report / Notification ----------
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorId      String
+  action       String // USER_SUSPENDED | USER_UNSUSPENDED | CREDENTIAL_REVOKED | REPORT_RESOLVED | ...
+  resourceType String // USER | EVENT | CREDENTIAL | REPORT | ...
+  resourceId   String?
+  reason       String?
+  before       Json?
+  after        Json?
+  createdAt    DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([resourceType, resourceId])
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  reporterId  String
+  targetType  String // EVENT | USER | ORGANIZER | ACTIVITY | CONTENT | INTERNAL
+  targetId    String
+  category    String
+  description String?
+  status      String   @default("OPEN") // OPEN | INVESTIGATING | ACTION_REQUIRED | RESOLVED | DISMISSED
+  resolution  String?
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String // SUSPENDED | UNSUSPENDED | EVENT_APPROVED | EVENT_REJECTED | ...
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 // ---------- Analytics ----------
