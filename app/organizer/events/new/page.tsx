@@ -84,7 +84,7 @@ export default function NewEventPage() {
       <div className="space-y-4">
         <div>
           <label className="label">{t("org.eventName")} *</label>
-          <input className="input" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Jelajah Kota Tua" />
+          <input className="input" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Nama event" />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -93,7 +93,7 @@ export default function NewEventPage() {
           </div>
           <div>
             <label className="label">{t("org.city")}</label>
-            <input className="input" value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="Semilir" />
+            <input className="input" value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="Kota" />
           </div>
         </div>
         <div>
@@ -102,7 +102,7 @@ export default function NewEventPage() {
         </div>
         <div>
           <label className="label">{t("org.venue")}</label>
-          <input className="input" value={form.venueName} onChange={(e) => set("venueName", e.target.value)} placeholder="Alun-Alun Semilir" />
+          <input className="input" value={form.venueName} onChange={(e) => set("venueName", e.target.value)} placeholder="Lokasi / venue" />
         </div>
         <div>
           <div className="mb-1.5 flex items-center gap-1.5">

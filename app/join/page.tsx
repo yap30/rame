@@ -186,11 +186,7 @@ function JoinInner() {
 
           <div className="mt-6 flex items-start gap-2 rounded-xl bg-ink/5 p-3 text-xs text-ink/55">
             <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>
-              {eid.real
-                ? "Login QR memakai Verifier API e.id (Login with VC) — verifikasi kredensial via dompet e.id."
-                : t("common.mockNote")}
-            </span>
+            <span>{eid.real ? t("auth.qrSecure") ?? "Scan QR dengan aplikasi e.id — verifikasi kredensialmu terjadi di dompet e.id." : t("common.mockNote")}</span>
           </div>
         </div>
       </motion.div>

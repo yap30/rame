@@ -288,5 +288,12 @@ if (newStampId) {
   check("stampId tersimpan di aktivitas baru", stAct?.stampId === newStampId, `(${stAct?.stampId} vs ${newStampId})`);
 }
 
+console.log("▶ 18. Statistik beranda dari DB (bukan hard-coded)");
+r = await req("/api/stats");
+check("stats: events >= 1", r.data?.stats?.events >= 1, `(${r.data?.stats?.events})`);
+check("stats: participants >= 1", r.data?.stats?.participants >= 1, `(${r.data?.stats?.participants})`);
+check("stats: stamps >= 1", r.data?.stats?.stamps >= 1, `(${r.data?.stats?.stamps})`);
+check("stats: xp >= 1", r.data?.stats?.xp >= 1, `(${r.data?.stats?.xp})`);
+
 console.log(`\n=== HASIL: ${pass} lulus, ${fail} gagal ===`);
 process.exit(fail > 0 ? 1 : 0);

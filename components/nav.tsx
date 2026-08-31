@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Languages, LayoutDashboard, LogOut, Menu, Shield, X } from "lucide-react";
+import { Languages, LayoutDashboard, LogOut, Menu, Shield, ChevronDown, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUiStore } from "@/lib/ui-store";
 import { api, useT } from "@/lib/client";
@@ -30,8 +30,10 @@ export function Nav() {
   const identity = useUiStore((s) => s.identity);
   const setIdentity = useUiStore((s) => s.setIdentity);
   const view = useUiStore((s) => s.view);
+  const setView = useUiStore((s) => s.setView);
   const [me, setMe] = useState<Me | null>(null);
   const [open, setOpen] = useState(false);
+  const [roleOpen, setRoleOpen] = useState(false);
 
   useEffect(() => {
     api<Me>("/api/auth/me").then(setMe).catch(() => setMe(null));
@@ -60,6 +62,23 @@ export function Nav() {
   const brand = identity?.brand ?? "#1e3a34";
   const brandInk = identity?.brandInk ?? "#ffffff";
   const emoji = identity?.logoEmoji ?? "◆";
+
+  // pilih peran langsung dari nav (sama seperti di profile)
+  const roleLabel = effectiveView === "organizer" ? t("role.organizer") : effectiveView === "admin" ? t("role.admin") : t("role.participant");
+  const pickRole = async (v: "participant" | "organizer" | "admin") => {
+    if (v === "organizer" && role !== "ORGANIZER" && role !== "ADMIN") {
+      try {
+        await api("/api/organizer/ensure", { method: "POST" });
+        qc.invalidateQueries({ queryKey: ["me"] });
+      } catch {
+        // gagal memastikan — tetap pindah tampilan
+      }
+    }
+    setView(v);
+    setRoleOpen(false);
+    setOpen(false);
+    router.refresh();
+  };
 
   // sebelum login, daftar event sudah tersedia di beranda — sembunyikan menu Event
   const links = me?.user
@@ -126,11 +145,7 @@ export function Nav() {
                 </Link>
               )}
             </>
-          ) : (
-            <Link href="/join" className="rounded-full px-4 py-2 text-sm font-medium text-ink/70 transition hover:bg-ink/5">
-              {t("common.login")}
-            </Link>
-          )}
+          ) : null}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -145,12 +160,42 @@ export function Nav() {
           </button>
 
           {me?.user ? (
-            <Link href="/profile" className="hidden items-center gap-2 rounded-full border border-ink/15 py-1 pl-1 pr-3 hover:bg-ink/5 sm:flex">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold" style={{ background: brand, color: brandInk }}>
-                {me.user.name.charAt(0)}
-              </span>
-              <span className="text-sm font-semibold">{me.user.name.split(" ")[0]}</span>
-            </Link>
+            <>
+              {/* pemilih peran (desktop) */}
+              <div className="relative hidden sm:block">
+                <button
+                  onClick={() => setRoleOpen((o) => !o)}
+                  className="btn-ghost !px-3 !py-1.5 text-xs font-bold"
+                  aria-label="Pilih peran"
+                >
+                  {roleLabel} <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+                {roleOpen && (
+                  <div className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-xl border border-ink/10 bg-white shadow-lift">
+                    <button onClick={() => pickRole("participant")} className={`block w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-ink/5 ${effectiveView === "participant" ? "bg-brand/10 text-brand" : ""}`}>
+                      🧑 {t("role.participant")}
+                    </button>
+                    <button onClick={() => pickRole("organizer")} className={`block w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-ink/5 ${effectiveView === "organizer" ? "bg-brand/10 text-brand" : ""}`}>
+                      🏢 {t("role.organizer")}
+                    </button>
+                    <button
+                      onClick={() => pickRole("admin")}
+                      disabled={role !== "ADMIN"}
+                      title={role !== "ADMIN" ? "Khusus role Admin" : undefined}
+                      className={`block w-full px-4 py-2.5 text-left text-sm font-semibold hover:bg-ink/5 ${effectiveView === "admin" ? "bg-brand/10 text-brand" : ""} ${role !== "ADMIN" ? "cursor-not-allowed opacity-40" : ""}`}
+                    >
+                      🛡️ {t("role.admin")}
+                    </button>
+                  </div>
+                )}
+              </div>
+              <Link href="/profile" className="hidden items-center gap-2 rounded-full border border-ink/15 py-1 pl-1 pr-3 hover:bg-ink/5 sm:flex">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold" style={{ background: brand, color: brandInk }}>
+                  {me.user.name.charAt(0)}
+                </span>
+                <span className="text-sm font-semibold">{me.user.name.split(" ")[0]}</span>
+              </Link>
+            </>
           ) : (
             <Link href="/join" className="btn-primary !px-4 !py-2 text-xs">
               {t("common.login")}
@@ -188,6 +233,28 @@ export function Nav() {
                     Admin
                   </Link>
                 )}
+                {/* pemilih peran (HP) — sama dengan dropdown desktop */}
+                <div className="border-t border-ink/10 px-3 pb-1 pt-3">
+                  <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink/40">{t("profile.role")}</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button onClick={() => pickRole("participant")} className={`rounded-lg border px-2 py-2 text-xs font-bold ${effectiveView === "participant" ? "border-brand bg-brand/10 text-brand" : "border-ink/15"}`}>
+                      🧑 {t("role.participant")}
+                    </button>
+                    <button onClick={() => pickRole("organizer")} className={`rounded-lg border px-2 py-2 text-xs font-bold ${effectiveView === "organizer" ? "border-brand bg-brand/10 text-brand" : "border-ink/15"}`}>
+                      🏢 {t("role.organizer")}
+                    </button>
+                    <button
+                      onClick={() => pickRole("admin")}
+                      disabled={role !== "ADMIN"}
+                      className={`rounded-lg border px-2 py-2 text-xs font-bold ${effectiveView === "admin" ? "border-brand bg-brand/10 text-brand" : "border-ink/15"} ${role !== "ADMIN" ? "cursor-not-allowed opacity-40" : ""}`}
+                    >
+                      🛡️ {t("role.admin")}
+                    </button>
+                  </div>
+                </div>
+                <Link href="/profile" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
+                  👤 {me.user.name}
+                </Link>
               </>
             ) : (
               <Link href="/join" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">

@@ -38,6 +38,7 @@ export default function HomePage() {
   const t = useT();
 
   const { data: eventsData } = useQuery({ queryKey: ["events"], queryFn: () => api<{ events: EventCardData[] }>("/api/events") });
+  const { data: statsData } = useQuery({ queryKey: ["stats"], queryFn: () => api<{ stats: { events: number; participants: number; stamps: number; xp: number } }>("/api/stats") });
   const { data: meData } = useQuery({ queryKey: ["me"], queryFn: () => api<{ user: { id: string; role: string; name: string } | null }>("/api/auth/me") });
   const { data: recData } = useQuery({
     queryKey: ["recommendations"],
@@ -46,8 +47,11 @@ export default function HomePage() {
   });
 
   const events = eventsData?.events ?? [];
+  const stats = statsData?.stats ?? { events: 0, participants: 0, stamps: 0, xp: 0 };
   const recommendations = recData?.recommendations ?? [];
   const isLoggedIn = Boolean(meData?.user);
+  // tombol demo hanya muncul bila event demo benar-benar ada di database
+  const hasDemoEvent = events.some((e) => e.slug === "jelajah-kota-tua");
 
   const faqs = [
     { q: t("faq.q1"), a: t("faq.a1") },
@@ -69,28 +73,30 @@ export default function HomePage() {
             </h1>
             <p className="mt-5 max-w-xl text-base text-brand-ink/75 sm:text-lg">{t("home.heroSub")}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/events/jelajah-kota-tua" className="btn !border !border-white/25 !bg-white/10 !text-white hover:!bg-white/20">
-                {t("home.viewDemo")}
-              </Link>
+              {hasDemoEvent && (
+                <Link href="/events/jelajah-kota-tua" className="btn !border !border-white/25 !bg-white/10 !text-white hover:!bg-white/20">
+                  {t("home.viewDemo")}
+                </Link>
+              )}
             </div>
           </motion.div>
 
           {/* stats row */}
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15 }} className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-2xl border border-white/15 bg-white/10 p-4 text-center backdrop-blur">
-              <div className="font-display text-3xl font-bold text-white">{events.length}</div>
+              <div className="font-display text-3xl font-bold text-white">{stats.events.toLocaleString("id-ID")}</div>
               <div className="mt-1 text-xs font-medium uppercase tracking-wide text-white/60">{t("home.statsEvents")}</div>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/10 p-4 text-center backdrop-blur">
-              <div className="font-display text-3xl font-bold text-white">{(events.reduce((a, e) => a + e.participants, 0)).toLocaleString("id-ID")}</div>
+              <div className="font-display text-3xl font-bold text-white">{stats.participants.toLocaleString("id-ID")}</div>
               <div className="mt-1 text-xs font-medium uppercase tracking-wide text-white/60">{t("home.statsParticipants")}</div>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/10 p-4 text-center backdrop-blur">
-              <div className="font-display text-3xl font-bold text-white">5</div>
+              <div className="font-display text-3xl font-bold text-white">{stats.stamps.toLocaleString("id-ID")}</div>
               <div className="mt-1 text-xs font-medium uppercase tracking-wide text-white/60">{t("home.statsStamps")}</div>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/10 p-4 text-center backdrop-blur">
-              <div className="font-display text-3xl font-bold text-white">500+</div>
+              <div className="font-display text-3xl font-bold text-white">{stats.xp.toLocaleString("id-ID")}+</div>
               <div className="mt-1 text-xs font-medium uppercase tracking-wide text-white/60">{t("home.statsXp")}</div>
             </div>
           </motion.div>

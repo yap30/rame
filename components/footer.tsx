@@ -3,13 +3,11 @@
 import Link from "next/link";
 import { useUiStore } from "@/lib/ui-store";
 import { useT } from "@/lib/client";
-import { eidStatusClient } from "@/lib/client-env";
 
 export function Footer() {
   const t = useT();
   const identity = useUiStore((s) => s.identity);
   const brand = identity?.brand ?? "#1e3a34";
-  const eid = eidStatusClient();
 
   return (
     <footer className="mt-16 border-t border-ink/10" style={{ background: "rgb(var(--rame-brand-soft) / 0.5)" }}>
@@ -40,17 +38,8 @@ export function Footer() {
             </li>
           </ul>
         </div>
-        <div>
-          <div className="mb-3 text-xs font-bold uppercase tracking-widest text-ink/50">Identitas</div>
-          <div className="flex flex-wrap gap-2">
-            <span className="chip">e.id OAuth SSO</span>
-            <span className="chip">e.id Issuer</span>
-            <span className="chip">Verifiable Credential</span>
-            <span className="chip">{eid.real ? eid.label : "Mode Demo"}</span>
-          </div>
-          <p className="mt-3 text-xs text-ink/50">
-            RAME · Technical Specification & Prototype Blueprint v1.0 · 2026
-          </p>
+        <div className="text-sm text-ink/50">
+          © {new Date().getFullYear()} RAME
         </div>
       </div>
     </footer>

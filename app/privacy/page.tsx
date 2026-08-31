@@ -36,7 +36,7 @@ export default function PrivacyPage() {
       </div>
 
       <div className="mt-8 text-xs text-ink/50">
-        RAME Technical Specification & Prototype Blueprint v1.0 · 30 Agustus 2026 ·{" "}
+        <p className="text-xs text-ink/40">© {new Date().getFullYear()} RAME</p>
         <Link href="/terms" className="underline">Syarat & Ketentuan</Link>
       </div>
     </div>

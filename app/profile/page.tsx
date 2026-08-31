@@ -106,11 +106,6 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
-          {activeView === "participant" && canOrganizer && (
-            <div className="mt-2 text-center text-[11px] text-ink/45">
-              💡 {t("role.organizer")}: {t("profile.roleHint") ?? "pilih untuk membuka dashboard penyelenggara"}
-            </div>
-          )}
         </div>
 
         <div className="mt-6 space-y-3 border-t border-ink/10 pt-6">
