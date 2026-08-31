@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Languages, LayoutDashboard, LogOut, Menu, Sparkles, X } from "lucide-react";
+import { Languages, LayoutDashboard, LogOut, Menu, Shield, Sparkles, X } from "lucide-react";
 import { useUiStore } from "@/lib/ui-store";
 import { api, useT } from "@/lib/client";
 
@@ -67,12 +67,32 @@ export function Nav() {
               {l.label}
             </Link>
           ))}
+          {me?.user ? (
+            <Link
+              href="/dashboard"
+              className={`rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/dashboard") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <Link href="/register" className="rounded-full px-4 py-2 text-sm font-medium text-ink/70 transition hover:bg-ink/5">
+              Daftar
+            </Link>
+          )}
           {me?.user?.role === "ORGANIZER" && (
             <Link
               href="/organizer"
               className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/organizer") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
             >
               <LayoutDashboard className="h-4 w-4" /> {t("nav.organizer")}
+            </Link>
+          )}
+          {me?.user?.role === "ADMIN" && (
+            <Link
+              href="/admin"
+              className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition hover:bg-ink/5 ${pathname.startsWith("/admin") ? "bg-ink/8 text-brand" : "text-ink/70"}`}
+            >
+              <Shield className="h-4 w-4" /> Admin
             </Link>
           )}
         </nav>
@@ -115,9 +135,23 @@ export function Nav() {
                 {l.label}
               </Link>
             ))}
+            {me?.user ? (
+              <Link href="/dashboard" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
+                Dashboard
+              </Link>
+            ) : (
+              <Link href="/register" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
+                Daftar
+              </Link>
+            )}
             {me?.user?.role === "ORGANIZER" && (
               <Link href="/organizer" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
                 {t("nav.organizer")}
+              </Link>
+            )}
+            {me?.user?.role === "ADMIN" && (
+              <Link href="/admin" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm hover:bg-ink/5">
+                Admin
               </Link>
             )}
             {me?.user && (

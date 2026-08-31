@@ -74,11 +74,14 @@ function JoinInner() {
             if (pollRef.current) clearInterval(pollRef.current);
             router.push(next);
             router.refresh();
+          } else if (st.status === "EXPIRED" || st.status === "REJECTED") {
+            doneRef.current = true;
+            if (pollRef.current) clearInterval(pollRef.current);
           }
         } catch {
           // biarkan polling lanjut
         }
-      }, 2500);
+      }, 2000);
     } catch {
       setError(t("auth.loginQrError"));
     } finally {
@@ -138,9 +141,18 @@ function JoinInner() {
               </div>
               <div className="mt-3 flex items-center justify-center gap-2 text-xs text-ink/55">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
-                {t("auth.loginQrWaiting")}
+                {vcStatus === "WAITING_APPROVAL" || vcStatus === "SCANNED"
+                  ? "QR sudah discan ✓ — selesaikan konfirmasi di aplikasi e.id…"
+                  : vcStatus === "APPROVED"
+                    ? t("auth.loginQrSuccess")
+                    : t("auth.loginQrWaiting")}
                 <span className="font-bold text-accent">({countdown}s)</span>
               </div>
+              {vcStatus === "APPROVED" && (
+                <Button className="mt-3 w-full" onClick={() => { doneRef.current = true; if (pollRef.current) clearInterval(pollRef.current); router.push(next); router.refresh(); }}>
+                  {t("auth.loginQrSuccess")} →
+                </Button>
+              )}
               <a href={vc.eidOauthUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-semibold text-brand underline">
                 {t("auth.loginQrOpenWallet")} ↗
               </a>
@@ -163,13 +175,16 @@ function JoinInner() {
             <a href={"/api/auth/eid/start?next=" + encodeURIComponent(next)} className="btn-ghost w-full">
               <ShieldCheck className="h-4 w-4" /> {t("auth.signInEid")}
             </a>
-            {eid.mode === "mock" && (
+            {eid.demoAllowed && (
               <>
                 <button onClick={async () => { await api("/api/auth/mock-login", { method: "POST", body: JSON.stringify({ kind: "participant" }) }); router.push(next); router.refresh(); }} className="btn-ghost w-full">
                   <UserRound className="h-4 w-4" /> {t("auth.participantDemo")}
                 </button>
                 <button onClick={async () => { await api("/api/auth/mock-login", { method: "POST", body: JSON.stringify({ kind: "organizer" }) }); router.push(next); router.refresh(); }} className="btn-ghost w-full">
                   <Building2 className="h-4 w-4" /> {t("auth.organizerDemo")}
+                </button>
+                <button onClick={async () => { await api("/api/auth/mock-login", { method: "POST", body: JSON.stringify({ kind: "admin" }) }); router.push("/admin"); router.refresh(); }} className="btn-ghost w-full">
+                  <ShieldCheck className="h-4 w-4" /> Masuk sebagai Admin (demo)
                 </button>
               </>
             )}

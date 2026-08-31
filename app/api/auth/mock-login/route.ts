@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: { code: "MOCK_DISABLED", message: "Mode mock nonaktif." } }, { status: 403 });
   }
   const body = (await req.json().catch(() => ({}))) as { kind?: string };
-  const kind = body.kind === "organizer" ? "organizer" : "participant";
+  const kind = body.kind === "organizer" ? "organizer" : body.kind === "admin" ? "admin" : "participant";
 
   const { user, token } = await demoLogin(kind);
   const res = NextResponse.json({ user });

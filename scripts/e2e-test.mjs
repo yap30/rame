@@ -154,5 +154,32 @@ if (vcSid) {
   check("session aktif via /me", r.data?.user?.id === r.data?.user?.id && Boolean(r.data?.user), `(${r.data?.user?.name ?? "none"})`);
 }
 
+console.log("▶ 12. Register organizer + Admin");
+// register organizer baru (email unik per run)
+const regEmail = `org-${Date.now()}@test.id`;
+r = await req("/api/auth/register/organizer", { method: "POST", body: { name: "Organizer Baru", email: regEmail, orgName: "Komunitas Uji" } });
+check("register organizer -> ok + session", r.status === 200 && r.data?.ok && r.data?.user?.role === "ORGANIZER", `(${r.status} · ${r.data?.user?.role})`);
+check("org dibuat", Boolean(r.data?.org?.id));
+r = await req("/api/auth/me");
+check("session organizer baru aktif", r.data?.user?.role === "ORGANIZER", `(${r.data?.user?.role})`);
+
+// login admin demo
+r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "admin" } });
+check("login admin", r.status === 200 && r.data?.user?.role === "ADMIN", `(${r.status} · ${r.data?.user?.role})`);
+r = await req("/api/admin/overview");
+check("admin overview 200", r.status === 200 && r.data?.overview?.users > 0, `(${r.status})`);
+r = await req("/api/admin/users");
+check("admin list users 200", r.status === 200 && Array.isArray(r.data?.users) && r.data.users.length > 0, `(${r.status})`);
+// ganti role pengguna uji -> ORGANIZER
+const target = (await req("/api/admin/users")).data.users.find((u) => u.email === regEmail);
+if (target) {
+  r = await req(`/api/admin/users/${target.id}`, { method: "PATCH", body: { role: "ORGANIZER" } });
+  check("admin ubah role", r.status === 200 && r.data?.user?.role === "ORGANIZER", `(${r.status})`);
+}
+// participant tidak boleh akses admin
+r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "participant" } });
+r = await req("/api/admin/users");
+check("participant ditolak akses admin", r.status === 401 || r.status === 403, `(${r.status})`);
+
 console.log(`\n=== HASIL: ${pass} lulus, ${fail} gagal ===`);
 process.exit(fail > 0 ? 1 : 0);

@@ -52,14 +52,20 @@ export async function issueSession(userId: string, role: string, orgId?: string)
   return createSessionToken(payload);
 }
 
-export async function demoLogin(kind: "participant" | "organizer") {
+export async function demoLogin(kind: "participant" | "organizer" | "admin") {
   const profile: EidProfile =
     kind === "organizer"
       ? { subject: "did:idchain:demo:rara", email: "rara@semilir.id", name: "Rara Semilir", trustLevel: "Moderate — Tier 2" }
-      : { subject: "did:idchain:demo:putri", email: "putri@semilir.id", name: "Putri Anggraini", trustLevel: "Moderate — Tier 2" };
+      : kind === "admin"
+        ? { subject: "did:idchain:demo:admin", email: "admin@rame.id", name: "Admin RAME", trustLevel: "Tier 2" }
+        : { subject: "did:idchain:demo:putri", email: "putri@semilir.id", name: "Putri Anggraini", trustLevel: "Moderate — Tier 2" };
   const { user, orgId } = await findOrCreateUserByEid(profile);
-  const token = await issueSession(user.id, user.role, orgId);
-  return { user, token };
+  // admin demo: pastikan role ADMIN (seed mungkin belum ada)
+  if (kind === "admin" && user.role !== "ADMIN") {
+    await prisma.user.update({ where: { id: user.id }, data: { role: "ADMIN" } });
+  }
+  const token = await issueSession(user.id, user.role === "ADMIN" ? "ADMIN" : user.role, orgId);
+  return { user: { ...user, role: user.role === "ADMIN" ? "ADMIN" : user.role }, token };
 }
 
 /** Variant untuk Login with VC: subject = DID holder, tanpa profil OAuth */

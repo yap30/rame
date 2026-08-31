@@ -108,6 +108,22 @@ async function main() {
     },
   });
 
+  const adminRame = await prisma.user.create({
+    data: {
+      name: "Admin RAME",
+      email: "admin@rame.id",
+      role: "ADMIN",
+      externalIdentities: {
+        create: {
+          provider: "e.id",
+          providerSubject: "did:idchain:demo:admin",
+          providerEmail: "admin@rame.id",
+          profileJson: { name: "Admin RAME", trustLevel: "Tier 2" },
+        },
+      },
+    },
+  });
+
   const budi = await prisma.user.create({ data: { name: "Budi Santoso", email: "budi@semilir.id", role: "PARTICIPANT" } });
   const sari = await prisma.user.create({ data: { name: "Sari Wulandari", email: "sari@semilir.id", role: "PARTICIPANT" } });
   const dimas = await prisma.user.create({ data: { name: "Dimas Prasetyo", email: "dimas@semilir.id", role: "PARTICIPANT" } });

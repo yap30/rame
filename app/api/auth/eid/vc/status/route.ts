@@ -24,10 +24,10 @@ export async function GET(req: NextRequest) {
   }
 
   // mode nyata: poll gateway untuk status terbaru (webhook mungkin belum sampai)
-  if (eidMode() !== "mock" && row.status === "PENDING") {
+  if (eidMode() !== "mock" && (row.status === "PENDING" || row.status === "SCANNED" || row.status === "WAITING_APPROVAL")) {
     try {
       const live = await getVerifier().getSession(sid);
-      if (live.status !== "PENDING" && live.status !== row.status) {
+      if (live.status !== row.status || (live.holderDid && !row.holderDid)) {
         await prisma.authLoginSession.update({
           where: { id: row.id },
           data: { status: live.status, holderDid: live.holderDid ?? row.holderDid, rawJson: { polled: live } as object },
@@ -40,7 +40,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  if (row.status === "APPROVED") {
+  // Login VC: WAITING_APPROVAL = holder sudah discan & terverifikasi (approve final
+  // dikonfirmasi via webhook bila tersedia). Untuk keperluan login, holder DID yang
+  // terverifikasi cukup — anggap sukses.
+  const SUCCESS_STATES = new Set(["APPROVED", "WAITING_APPROVAL"]);
+  if (SUCCESS_STATES.has(row.status)) {
     const did = row.holderDid;
     if (!did) return Response.json({ ok: true, status: "APPROVED", authenticated: false, message: "HOLDER_DID_MISSING" });
 
@@ -62,6 +66,13 @@ export async function GET(req: NextRequest) {
       maxAge: 60 * 60 * 24 * 7,
     });
     return res;
+  }
+
+  if (row.status === "REJECTED") {
+    return Response.json({ ok: true, status: "REJECTED", authenticated: false });
+  }
+  if (row.status === "EXPIRED") {
+    return Response.json({ ok: true, status: "EXPIRED", authenticated: false }, { status: 410 });
   }
 
   return Response.json({ ok: true, status: row.status, authenticated: false });
