@@ -1,0 +1,6 @@
+# Caddy — reverse proxy + HTTPS otomatis (Let's Encrypt)
+# Domain diambil dari env DOMAIN di docker-compose.yml
+{$DOMAIN} {
+    encode gzip
+    reverse_proxy app:3000
+}
