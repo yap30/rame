@@ -1,0 +1,611 @@
+// ============================================================
+// RAME — Prisma Schema v1.0
+// Domain model sesuai blueprint: Identity, Organizations, Event,
+// Journey, Activity, Scanner, Gamification, Credential, Feedback,
+// Analytics.
+//
+// provider: "sqlite" untuk dev lokal (tanpa server).
+// Di VPS (Docker), Dockerfile mengganti baris ini menjadi "postgresql"
+// sebelum build — lihat Dockerfile & README.
+// Enum dihindari agar kompatibel SQLite — konstanta ada di lib/const.ts
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Identity ----------
+
+model User {
+  id          String   @id @default(cuid())
+  name        String
+  email       String?
+  avatarUrl   String?
+  role        String   @default("PARTICIPANT") // PARTICIPANT | ORGANIZER | ADMIN
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  externalIdentities     ExternalIdentity[]
+  memberships            OrganizationMember[]
+  joinedEvents           EventParticipant[]
+  completions            ActivityCompletion[]
+  verificationsScanned   ActivityVerification[]   @relation("ScannerUser")
+  verificationsVerified  ActivityVerification[]   @relation("VerifierUser")
+  participantStamps      ParticipantStamp[]
+  xpTransactions         XpTransaction[]
+  achievements           ParticipantAchievement[]
+  credentialIssuances    CredentialIssuance[]
+  feedbackResponses      FeedbackResponse[]
+  eventLogs              EventLog[]
+  qrSessions             QrSession[]
+  authorizedDevices      ScannerDevice[]
+}
+
+model ExternalIdentity {
+  id            String   @id @default(cuid())
+  userId        String
+  provider      String   @default("e.id") // e.id (IDChain)
+  providerSubject String // DID / subject dari provider
+  providerEmail String?
+  profileJson   Json?
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerSubject])
+  @@index([userId])
+}
+
+// ---------- Organizations ----------
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+
+  members OrganizationMember[]
+  events  Event[]
+}
+
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String   @default("COMMUNITY") // EO | COMMUNITY | VENUE | MEDIA | ADMIN
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+}
+
+// ---------- Venue / Community / Media ----------
+
+model Venue {
+  id          String   @id @default(cuid())
+  name        String
+  city        String?
+  address     String?
+  lat         Float?
+  lng         Float?
+  createdAt   DateTime @default(now())
+
+  events Event[]
+}
+
+model Community {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  events EventCommunity[]
+}
+
+model MediaPartner {
+  id          String   @id @default(cuid())
+  name        String
+  url         String?
+  createdAt   DateTime @default(now())
+
+  events EventMediaPartner[]
+}
+
+// ---------- Event ----------
+
+model Event {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  tagline     String?
+  description String?
+  story       String? // Event Story — narasi panjang
+  city        String?
+  coverUrl    String?
+  // White-label: token identitas visual event (warna, font, gaya stamp)
+  identityJson Json?
+  journeyMode String   @default("HYBRID") // LINEAR | BRANCHING | FREE_EXPLORATION | HYBRID
+  status      String   @default("DRAFT")  // DRAFT | PUBLISHED | ARCHIVED
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organizationId String
+  venueId        String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  venue        Venue        @relation(fields: [venueId], references: [id])
+
+  communities     EventCommunity[]
+  mediaPartners   EventMediaPartner[]
+  participants    EventParticipant[]
+  journey         Journey?
+  activities      Activity[]
+  stamps          Stamp[]
+  achievements    Achievement[]
+  feedbackForm    FeedbackForm?
+  credentialConfig CredentialConfig?
+  eventLogs       EventLog[]
+  insights        Insight[]
+  scannerDevices  ScannerDevice[]
+  offlineTransactions OfflineTransaction[]
+
+  @@index([organizationId])
+}
+
+model EventCommunity {
+  id          String @id @default(cuid())
+  eventId     String
+  communityId String
+
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, communityId])
+}
+
+model EventMediaPartner {
+  id            String @id @default(cuid())
+  eventId       String
+  mediaPartnerId String
+
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  mediaPartner MediaPartner @relation(fields: [mediaPartnerId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, mediaPartnerId])
+}
+
+model EventParticipant {
+  id          String    @id @default(cuid())
+  eventId     String
+  userId      String
+  status      String    @default("JOINED") // JOINED | COMPLETED
+  joinedAt    DateTime  @default(now())
+  completedAt DateTime?
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+// ---------- Journey ----------
+
+model Journey {
+  id        String   @id @default(cuid())
+  eventId   String   @unique
+  mode      String   @default("HYBRID")
+  title     String?
+  createdAt DateTime @default(now())
+
+  event Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  nodes JourneyNode[]
+  edges JourneyEdge[]
+}
+
+model JourneyNode {
+  id        String  @id @default(cuid())
+  journeyId String
+  activityId String @unique
+  position  Int     @default(0)
+  titleOverride String?
+  descriptionOverride String?
+
+  journey  Journey  @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  edgesFrom JourneyEdge[] @relation("EdgeFrom")
+  edgesTo   JourneyEdge[] @relation("EdgeTo")
+
+  @@index([journeyId])
+}
+
+model JourneyEdge {
+  id         String  @id @default(cuid())
+  journeyId  String
+  fromNodeId String
+  toNodeId   String
+  required   Boolean @default(true)
+  label      String?
+
+  journey Journey    @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  fromNode JourneyNode @relation("EdgeFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode   JourneyNode @relation("EdgeTo", fields: [toNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([journeyId, fromNodeId, toNodeId])
+}
+
+// ---------- Activity ----------
+
+model ActivityTemplate {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  type             String   // PHOTO | QUIZ | QR_CHECKIN | FEEDBACK | SCAVENGER | CUSTOM
+  defaultConfigJson Json?
+  createdAt        DateTime @default(now())
+
+  activities Activity[]
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  eventId     String
+  templateId  String?
+  title       String
+  description String?
+  type        String   @default("CUSTOM") // PHOTO | QUIZ | QR_CHECKIN | FEEDBACK | SCAVENGER | CUSTOM
+  completionMethod String @default("AUTO") // AUTO | ORGANIZER_VERIFY | QR_VERIFY | UPLOAD
+  verificationRequired Boolean @default(false)
+  repeatable  Boolean  @default(false)
+  xpReward    Int      @default(0)
+  stampId     String?
+  achievementId String?
+  availabilityStartsAt DateTime?
+  availabilityEndsAt   DateTime?
+  icon        String   @default("🎯")
+  sortOrder   Int      @default(0)
+  configJson  Json?    // data tambahan: daftar soal quiz, prompt foto, dll.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event      Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  template   ActivityTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  stamp      Stamp?          @relation(fields: [stampId], references: [id], onDelete: SetNull)
+  achievement Achievement?   @relation(fields: [achievementId], references: [id], onDelete: SetNull)
+  journeyNode JourneyNode?
+  completions ActivityCompletion[]
+  verifications ActivityVerification[]
+  qrSessions  QrSession[]
+
+  @@index([eventId])
+}
+
+model ActivityCompletion {
+  id             String   @id @default(cuid())
+  activityId     String
+  eventId        String
+  userId         String
+  completedAt    DateTime @default(now())
+  method         String   @default("AUTO")
+  idempotencyKey String   @unique
+  dataJson       Json?    // jawaban quiz, url foto, dll.
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stampAwards ParticipantStamp[]
+  verifications ActivityVerification[]
+
+  @@index([activityId, userId])
+}
+
+model ActivityVerification {
+  id                   String   @id @default(cuid())
+  completionId         String?
+  activityId           String
+  eventId              String
+  userId               String
+  scannerDeviceId      String?
+  verifiedByUserId     String?
+  method               String   @default("ONLINE") // ONLINE | OFFLINE
+  status               String   @default("VERIFIED") // VERIFIED | REJECTED | SYNCED | DUPLICATE | CONFLICT
+  qrSessionId          String?
+  offlineTransactionId String?
+  reason               String?
+  createdAt            DateTime @default(now())
+
+  completion      ActivityCompletion? @relation(fields: [completionId], references: [id], onDelete: SetNull)
+  activity        Activity            @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user            User                @relation("ScannerUser", fields: [userId], references: [id], onDelete: Cascade)
+  verifiedBy      User?               @relation("VerifierUser", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  scannerDevice   ScannerDevice?      @relation(fields: [scannerDeviceId], references: [id], onDelete: SetNull)
+  qrSession       QrSession?          @relation(fields: [qrSessionId], references: [id], onDelete: SetNull)
+  offlineTransaction OfflineTransaction? @relation(fields: [offlineTransactionId], references: [id], onDelete: SetNull)
+
+  @@unique([offlineTransactionId])
+  @@index([eventId, createdAt])
+}
+
+// ---------- Scanner ----------
+
+model QrSession {
+  id            String    @id @default(cuid())
+  activityId    String
+  eventId       String
+  userId        String
+  nonce         String    @unique
+  payload       String // JSON ter-enkode untuk QR
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verifications ActivityVerification[]
+
+  @@index([nonce])
+}
+
+model ScannerDevice {
+  id               String    @id @default(cuid())
+  eventId          String
+  name             String
+  deviceCode       String    @unique
+  authorizedByUserId String?
+  authorizedAt     DateTime?
+  lastSeenAt       DateTime?
+  createdAt        DateTime  @default(now())
+
+  event      Event                 @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  authorizedBy User?               @relation(fields: [authorizedByUserId], references: [id], onDelete: SetNull)
+  verifications ActivityVerification[]
+  offlineTransactions OfflineTransaction[]
+}
+
+model OfflineTransaction {
+  id               String    @id @default(cuid())
+  scannerDeviceId  String
+  eventId          String
+  payload          Json // transaksi verifikasi offline (tanpa koneksi)
+  status           String    @default("PENDING") // PENDING | SYNCED | DUPLICATE | CONFLICT | REJECTED
+  serverReferenceId String?
+  createdAt        DateTime  @default(now())
+  syncedAt         DateTime?
+
+  scannerDevice ScannerDevice @relation(fields: [scannerDeviceId], references: [id], onDelete: Cascade)
+  event         Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  verification  ActivityVerification?
+
+  @@index([scannerDeviceId, status])
+}
+
+// ---------- Gamification ----------
+
+model Stamp {
+  id        String  @id @default(cuid())
+  eventId   String
+  name      String
+  description String?
+  emoji     String  @default("📮")
+  imageUrl  String?
+  color     String  @default("#b45309")
+  rarity    Int     @default(0)
+  sortOrder Int     @default(0)
+
+  event      Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  activities Activity[]
+  awards     ParticipantStamp[]
+}
+
+model ParticipantStamp {
+  id             String   @id @default(cuid())
+  userId         String
+  stampId        String
+  eventId        String
+  completionId   String?
+  awardedAt      DateTime @default(now())
+  idempotencyKey String   @unique
+
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stamp      Stamp              @relation(fields: [stampId], references: [id], onDelete: Cascade)
+  completion ActivityCompletion? @relation(fields: [completionId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, stampId, eventId])
+}
+
+model XpTransaction {
+  id             String   @id @default(cuid())
+  userId         String
+  eventId        String
+  amount         Int
+  reason         String
+  refId          String?
+  idempotencyKey String   @unique
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, eventId])
+}
+
+model Achievement {
+  id            String   @id @default(cuid())
+  eventId       String
+  name          String
+  description   String?
+  emoji         String   @default("🏆")
+  conditionType String   @default("ALL_ACTIVITIES") // ALL_ACTIVITIES | N_ACTIVITIES | STAMPS_COUNT | CUSTOM
+  conditionValue Int     @default(0)
+  secret        Boolean  @default(false)
+  sortOrder     Int      @default(0)
+
+  event      Event                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  activities Activity[]
+  awards     ParticipantAchievement[]
+}
+
+model ParticipantAchievement {
+  id             String   @id @default(cuid())
+  userId         String
+  achievementId  String
+  eventId        String
+  awardedAt      DateTime @default(now())
+  idempotencyKey String   @unique
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+}
+
+// ---------- Credential ----------
+
+model CredentialConfig {
+  id               String   @id @default(cuid())
+  eventId          String   @unique
+  enabled          Boolean  @default(false)
+  title            String?
+  description      String?
+  schemaId         String? // id schema di e.id
+  eligibilityPolicy String  @default("EVENT_COMPLETION") // EVENT_COMPLETION | MILESTONE | ACHIEVEMENT | CUSTOM
+  policyValue      Json?
+  issuerOrgName    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  event      Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  issuances  CredentialIssuance[]
+}
+
+model CredentialIssuance {
+  id                String    @id @default(cuid())
+  credentialConfigId String
+  userId            String
+  eventId           String
+  status            String    @default("ELIGIBLE") // ELIGIBLE | PENDING | ISSUED | FAILED | REVOKED
+  providerReference String? // ref credential di e.id / tx hash
+  errorMessage      String?
+  idempotencyKey    String    @unique
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  config CredentialConfig @relation(fields: [credentialConfigId], references: [id], onDelete: Cascade)
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events CredentialEvent[]
+
+  @@unique([credentialConfigId, userId])
+}
+
+model CredentialEvent {
+  id         String   @id @default(cuid())
+  issuanceId String
+  type       String // ELIGIBLE | SUBMITTED | WEBHOOK_RECEIVED | ISSUED | FAILED | REVOKED
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  issuance CredentialIssuance @relation(fields: [issuanceId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Feedback ----------
+
+model FeedbackForm {
+  id          String   @id @default(cuid())
+  eventId     String   @unique
+  title       String?
+  description String?
+  required    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  event     Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  questions FeedbackQuestion[]
+  responses FeedbackResponse[]
+}
+
+model FeedbackQuestion {
+  id         String   @id @default(cuid())
+  formId     String
+  prompt     String
+  type       String   @default("RATING") // RATING | TEXT | CHOICE
+  required   Boolean  @default(true)
+  optionsJson Json?
+  sortOrder  Int      @default(0)
+
+  form    FeedbackForm      @relation(fields: [formId], references: [id], onDelete: Cascade)
+  answers FeedbackAnswer[]
+}
+
+model FeedbackResponse {
+  id             String   @id @default(cuid())
+  formId         String
+  userId         String
+  eventId        String
+  submittedAt    DateTime @default(now())
+  idempotencyKey String   @unique
+
+  form    FeedbackForm      @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers FeedbackAnswer[]
+
+  @@unique([formId, userId])
+}
+
+model FeedbackAnswer {
+  id         String @id @default(cuid())
+  responseId String
+  questionId String
+  value      String
+
+  response FeedbackResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question FeedbackQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Analytics ----------
+
+model EventLog {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String?
+  actorType String   @default("PARTICIPANT") // PARTICIPANT | ORGANIZER | SYSTEM | SCANNER
+  action    String // EVENT_JOINED | ACTIVITY_STARTED | ACTIVITY_COMPLETED | VERIFICATION_COMPLETED | STAMP_AWARDED | XP_AWARDED | ACHIEVEMENT_UNLOCKED | CREDENTIAL_ELIGIBLE | CREDENTIAL_ISSUED | FEEDBACK_SUBMITTED | ...
+  dataJson  Json?
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([eventId, action, createdAt])
+  @@index([createdAt])
+}
+
+model Insight {
+  id        String   @id @default(cuid())
+  eventId   String
+  ruleId    String?
+  title     String
+  body      String
+  severity  String   @default("INFO") // INFO | WARNING | SUCCESS
+  dataJson  Json?
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model InsightRule {
+  id            String   @id @default(cuid())
+  key           String   @unique
+  name          String
+  description   String?
+  thresholdJson Json?
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+}

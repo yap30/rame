@@ -1,0 +1,63 @@
+// ============================================================
+// RAME — auth: linking profil e.id + penerbitan session
+// Dipakai route /api/auth/eid/* dan /api/auth/mock-login
+// ============================================================
+import prisma from "./db";
+import { createSessionToken, SessionPayload } from "./session";
+import { EidProfile } from "./eid/types";
+
+export async function findOrCreateUserByEid(profile: EidProfile): Promise<{ user: { id: string; name: string; email: string | null; role: string }; orgId?: string }> {
+  const ext = await prisma.externalIdentity.findUnique({
+    where: { provider_providerSubject: { provider: "e.id", providerSubject: profile.subject } },
+    include: { user: true },
+  });
+
+  let user = ext?.user ?? null;
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        name: profile.name ?? profile.email ?? "Peserta e.id",
+        email: profile.email,
+        role: "PARTICIPANT",
+        avatarUrl: "",
+        externalIdentities: {
+          create: {
+            provider: "e.id",
+            providerSubject: profile.subject,
+            providerEmail: profile.email,
+            profileJson: (profile.raw ?? { name: profile.name, trustLevel: profile.trustLevel }) as object,
+          },
+        },
+      },
+    });
+  } else if (profile.email && !user.email) {
+    user = await prisma.user.update({ where: { id: user.id }, data: { email: profile.email } });
+  }
+
+  let orgId: string | undefined;
+  if (user.role === "ORGANIZER") {
+    const membership = await prisma.organizationMember.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: "asc" },
+      select: { organizationId: true },
+    });
+    orgId = membership?.organizationId;
+  }
+
+  return { user: { id: user.id, name: user.name, email: user.email, role: user.role }, orgId };
+}
+
+export async function issueSession(userId: string, role: string, orgId?: string): Promise<string> {
+  const payload: SessionPayload = { sub: userId, role, orgId };
+  return createSessionToken(payload);
+}
+
+export async function demoLogin(kind: "participant" | "organizer") {
+  const profile: EidProfile =
+    kind === "organizer"
+      ? { subject: "did:idchain:demo:rara", email: "rara@semilir.id", name: "Rara Semilir", trustLevel: "Moderate — Tier 2" }
+      : { subject: "did:idchain:demo:putri", email: "putri@semilir.id", name: "Putri Anggraini", trustLevel: "Moderate — Tier 2" };
+  const { user, orgId } = await findOrCreateUserByEid(profile);
+  const token = await issueSession(user.id, user.role, orgId);
+  return { user, token };
+}

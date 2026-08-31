@@ -1,0 +1,47 @@
+{
+  "name": "rame",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RAME — white-label platform untuk event komunitas: journey, gamification, verifikasi QR, analytics, integrasi e.id",
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.5.0",
+    "@tanstack/react-query": "^5.66.0",
+    "dotenv": "^17.4.2",
+    "framer-motion": "^11.18.0",
+    "html5-qrcode": "^2.3.8",
+    "jose": "^5.9.6",
+    "lucide-react": "^0.474.0",
+    "next": "^15.2.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-hook-form": "^7.54.0",
+    "zod": "^3.24.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.0",
+    "prisma": "^6.5.0",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

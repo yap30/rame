@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   RAME — design tokens (default). Event identity menimpa
+   --rame-* via inline style di <html> (white-label).
+   ============================================================ */
+:root {
+  --rame-ink: 34 48 44; /* #22302c */
+  --rame-paper: 248 244 234; /* #f8f4ea */
+  --rame-brand: 30 58 52; /* #1e3a34 */
+  --rame-brand-soft: 228 236 229; /* #e4ece5 */
+  --rame-brand-ink: 255 255 255;
+  --rame-accent: 217 119 6; /* #d97706 */
+  --rame-accent-soft: 253 240 220; /* #fdf0dc */
+  --rame-gold: 185 138 26; /* #b98a1a */
+
+  /* aksesibilitas */
+  --a11y-scale: 1;
+  --a11y-line: 1.6;
+  --a11y-contrast: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: rgb(var(--rame-paper));
+  color: rgb(var(--rame-ink));
+  font-size: calc(1rem * var(--a11y-scale));
+  line-height: var(--a11y-line);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Kontras tinggi: teks lebih gelap & tebal, latar lebih terang */
+.rame-contrast {
+  --a11y-contrast: 1;
+  filter: contrast(1.08) saturate(1.05);
+}
+.rame-contrast body,
+.rame-contrast p,
+.rame-contrast li {
+  font-weight: 450;
+}
+
+/* kurangi motion sesuai prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer components {
+  .rame-container {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-brand-ink shadow-lift hover:opacity-90;
+  }
+  .btn-accent {
+    @apply btn bg-accent text-white shadow-lift hover:opacity-90;
+  }
+  .btn-ghost {
+    @apply btn border border-ink/20 bg-transparent text-ink hover:bg-ink/5;
+  }
+  .btn-outline-brand {
+    @apply btn border-2 border-brand text-brand hover:bg-brand hover:text-brand-ink;
+  }
+
+  .card {
+    @apply rounded-stamp border border-ink/10 bg-white/70 p-5 shadow-sm backdrop-blur-sm;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-ink/15 bg-white/60 px-3 py-1 text-xs font-medium;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-ink/20 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink/60;
+  }
+
+  .section-title {
+    @apply font-display text-3xl font-bold tracking-tight sm:text-4xl;
+  }
+
+  .section-kicker {
+    @apply mb-2 text-xs font-bold uppercase tracking-[0.2em] text-accent;
+  }
+
+  /* stamp */
+  .stamp {
+    @apply relative flex h-16 w-16 items-center justify-center rounded-full text-2xl shadow-stamp;
+  }
+  .stamp-uncollected {
+    @apply flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-ink/25 text-ink/25;
+  }
+
+  /* jalur journey */
+  .journey-node {
+    @apply relative flex items-center gap-4;
+  }
+  .journey-line {
+    @apply absolute left-8 top-16 h-[calc(100%-1rem)] w-0.5 bg-ink/15;
+  }
+}
+
+/* scrollbar halus */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgb(var(--rame-ink) / 0.2); border-radius: 999px; }
+::-webkit-scrollbar-track { background: transparent; }

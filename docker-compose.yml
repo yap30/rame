@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rame
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rame_password_ganti}
+      POSTGRES_DB: rame
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rame -d rame"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://rame:${POSTGRES_PASSWORD:-rame_password_ganti}@db:5432/rame?schema=public"
+      SESSION_SECRET: ${SESSION_SECRET:-ganti-dengan-random-32+byte}
+      # e.id — sandbox: EID_MODE=sandbox + isi client id/secret
+      EID_MODE: ${EID_MODE:-mock}
+      NEXT_PUBLIC_EID_MODE: ${EID_MODE:-mock}
+      EID_OAUTH_BASE_URL: "https://api-dev.e.id"
+      EID_OAUTH_CLIENT_ID: ${EID_OAUTH_CLIENT_ID:-}
+      EID_OAUTH_CLIENT_SECRET: ${EID_OAUTH_CLIENT_SECRET:-}
+      EID_OAUTH_CALLBACK_URL: ${EID_OAUTH_CALLBACK_URL:-http://localhost:3000/api/auth/eid/callback}
+      EID_ISSUER_BASE_URL: "https://gateway-sandbox.e.id"
+      EID_ISSUER_CLIENT_ID: ${EID_ISSUER_CLIENT_ID:-}
+      EID_ISSUER_CLIENT_SECRET: ${EID_ISSUER_CLIENT_SECRET:-}
+      EID_WEBHOOK_SECRET: ${EID_WEBHOOK_SECRET:-}
+      NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID:-}
+      SEED_ON_START: ${SEED_ON_START:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata: {}
