@@ -114,15 +114,31 @@ export default function ActivityPage() {
       ) : (
         <div className="mt-8 space-y-6">
           {isQuiz && <QuizBlock questions={questions} answers={quizAnswers} setAnswers={setQuizAnswers} wrong={quizWrong} onAnswer={() => setQuizWrong(false)} onSubmit={() => complete.mutate({ method: "AUTO", data: { answers: quizAnswers } })} pending={complete.isPending} />}
-          {needsQr && <QrBlock activityId={a.id} />}
-          {isUpload && (
-            <UploadBlock onUpload={(dataUrl) => complete.mutate({ method: "UPLOAD", data: { uploadUrl: dataUrl } })} pending={complete.isPending} />
-          )}
-          {!isQuiz && !needsQr && !isUpload && (
-            <div className="card !p-6 text-center">
-              <p className="mb-4 text-sm text-ink/60">{t("activity.quizIntro") === "Jawab dengan benar untuk menyelesaikan aktivitas." ? "Selesaikan aktivitas ini untuk menerima reward." : "Complete this activity to receive rewards."}</p>
-              <Button onClick={() => complete.mutate({ method: "AUTO" })} loading={complete.isPending}>{t("activity.complete")}</Button>
-            </div>
+          {needsQr ? (
+            <>
+              {/* aktivitas verifikasi panitia: upload foto = bukti, selesai via scan QR panitia */}
+              {isUpload && (
+                <UploadBlock
+                  evidenceMode
+                  pending={complete.isPending}
+                  onUpload={() => {}}
+                  note={t("activity.evidenceReady")}
+                />
+              )}
+              <QrBlock activityId={a.id} hint={isUpload ? t("activity.scanAfterUpload") : undefined} />
+            </>
+          ) : (
+            <>
+              {isUpload && (
+                <UploadBlock onUpload={(dataUrl) => complete.mutate({ method: "UPLOAD", data: { uploadUrl: dataUrl } })} pending={complete.isPending} />
+              )}
+              {!isQuiz && !isUpload && (
+                <div className="card !p-6 text-center">
+                  <p className="mb-4 text-sm text-ink/60">{t("activity.quizIntro") === "Jawab dengan benar untuk menyelesaikan aktivitas." ? "Selesaikan aktivitas ini untuk menerima reward." : "Complete this activity to receive rewards."}</p>
+                  <Button onClick={() => complete.mutate({ method: "AUTO" })} loading={complete.isPending}>{t("activity.complete")}</Button>
+                </div>
+              )}
+            </>
           )}
           {quizWrong && !isQuiz && (
             <div className="animate-shake-x rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{t("error.generic")}</div>
@@ -201,7 +217,7 @@ function QuizBlock({ questions, answers, setAnswers, wrong, onAnswer, onSubmit, 
   );
 }
 
-function QrBlock({ activityId }: { activityId: string }) {
+function QrBlock({ activityId, hint }: { activityId: string; hint?: string }) {
   const t = useT();
   const [qr, setQr] = useState<{ qr: string; expiresAt: string; ttlSeconds: number } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -236,7 +252,11 @@ function QrBlock({ activityId }: { activityId: string }) {
   return (
     <div className="card !p-6 text-center">
       <div className="mb-3 flex items-center justify-center gap-2 text-sm font-bold"><QrCode className="h-4 w-4 text-accent" /> {t("qr.title")}</div>
-      <p className="mb-4 text-xs text-ink/55">{t("activity.scanInstructions")}</p>
+      {hint ? (
+        <p className="mb-2 rounded-xl bg-accent/10 px-3 py-2 text-xs font-semibold text-accent">{hint}</p>
+      ) : (
+        <p className="mb-4 text-xs text-ink/55">{t("activity.scanInstructions")}</p>
+      )}
 
       {loading && <div className="flex justify-center py-10"><Spinner className="h-8 w-8" /></div>}
 
@@ -263,13 +283,13 @@ function QrBlock({ activityId }: { activityId: string }) {
   );
 }
 
-function UploadBlock({ onUpload, pending }: { onUpload: (dataUrl: string) => void; pending: boolean }) {
+function UploadBlock({ onUpload, pending, evidenceMode = false, note }: { onUpload: (dataUrl: string) => void; pending: boolean; evidenceMode?: boolean; note?: string }) {
   const t = useT();
   const [preview, setPreview] = useState<string | null>(null);
   return (
     <div className="card !p-6 text-center">
-      <div className="mb-3 text-sm font-bold"><Upload className="mr-1 inline h-4 w-4 text-accent" /> {t("activity.photoPrompt")}</div>
-      <p className="mb-4 text-xs text-ink/55">{t("activity.uploadHint")}</p>
+      <div className="mb-3 text-sm font-bold"><Upload className="mr-1 inline h-4 w-4 text-accent" /> {evidenceMode ? t("activity.evidenceTitle") : t("activity.photoPrompt")}</div>
+      <p className="mb-4 text-xs text-ink/55">{evidenceMode ? t("activity.evidenceHint") : t("activity.uploadHint")}</p>
       {preview ? (
         <div className="mx-auto max-w-xs overflow-hidden rounded-2xl border border-ink/10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -287,16 +307,26 @@ function UploadBlock({ onUpload, pending }: { onUpload: (dataUrl: string) => voi
               const f = e.target.files?.[0];
               if (!f) return;
               const reader = new FileReader();
-              reader.onload = () => setPreview(String(reader.result));
+              reader.onload = () => {
+                const url = String(reader.result);
+                setPreview(url);
+                if (evidenceMode) onUpload(url);
+              };
               reader.readAsDataURL(f);
             }}
           />
         </label>
       )}
-      {preview && (
-        <Button className="mt-4" onClick={() => onUpload(preview)} loading={pending}>
-          {t("activity.complete")}
-        </Button>
+      {preview && evidenceMode ? (
+        <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-accent/10 px-3 py-2.5 text-sm font-semibold text-accent">
+          <Check className="h-4 w-4" /> {note ?? t("activity.evidenceReady")}
+        </div>
+      ) : (
+        preview && (
+          <Button className="mt-4" onClick={() => onUpload(preview)} loading={pending}>
+            {t("activity.complete")}
+          </Button>
+        )
       )}
     </div>
   );

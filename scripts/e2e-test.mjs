@@ -64,20 +64,35 @@ check("stamp Penulis Cerita (hanya jika baru selesai)", !newlyCompleted || r.dat
 r = await req(`/api/activities/${hope.activityId}/complete`, { method: "POST", body: { method: "AUTO", data: {} } });
 check("duplikat -> ALREADY_COMPLETED", r.data?.message === "ALREADY_COMPLETED", `(${r.data?.message})`);
 
-console.log("▶ 5. Buat QR & verifikasi (organizer scan)");
-r = await req(`/api/activities/${qrNode.activityId}/qr`, { method: "POST" });
-check("QR dibuat (409 = sudah selesai dari run sebelumnya)", r.status === 200 && r.data?.qr?.startsWith("data:image/png") || r.status === 409, `(${r.status})`);
+console.log("▶ 4b. Aktivitas verifikasi panitia TIDAK bisa self-complete");
+r = await req(`/api/activities/${qrNode.activityId}/complete`, { method: "POST", body: { method: "UPLOAD", data: { uploadUrl: "demo://foto" } } });
+check("self-complete ditolak (VERIFICATION_REQUIRED)", r.status === 403 && r.data?.error?.code === "VERIFICATION_REQUIRED", `(${r.status} · ${r.data?.error?.code})`);
 
-// login organizer utk tes scan dgn payload yang valid
+console.log("▶ 5. Verifikasi QR semua aktivitas QR_VERIFY (jalur panitia)");
+// login organizer utk ambil device scanner + tes payload palsu
 r = await req("/api/auth/mock-login", { method: "POST", body: { kind: "organizer" } });
 const devices = await req(`/api/organizer/events/${ev.id}/scanner`);
 const devCode = devices.data.devices[0]?.deviceCode;
 check("device scanner terotorisasi", Boolean(devCode), JSON.stringify(devices.data.devices));
 if (devCode) {
-  // buat payload QR valid: kita simulasikan via endpoint internal — ambil session terbaru user participant
-  // (untuk smoke test, scan dgn payload palsu harus ditolak)
+  // smoke test: payload palsu harus ditolak
   r = await req("/api/verification/scan", { method: "POST", body: { payload: JSON.stringify({ v: 1, sid: "fake", nonce: "fake", aid: qrNode.activityId, eid: ev.id, uid: "x", exp: Date.now() + 5000 }), deviceCode: devCode } });
   check("scan payload palsu ditolak", r.status === 400 || r.status === 410, `(${r.status})`);
+
+  // scan NYATA untuk setiap aktivitas yang butuh verifikasi panitia
+  const verifyNodes = ev2.data.journey.nodes.filter((n) => ["Menara Jam", "Rasa Legenda", "Panggung Keroncong"].some((x) => n.title.includes(x)));
+  check("3 aktivitas butuh verifikasi", verifyNodes.length === 3, `(${verifyNodes.length})`);
+  for (const vn of verifyNodes) {
+    await req("/api/auth/mock-login", { method: "POST", body: { kind: "participant" } });
+    const qr = await req(`/api/activities/${vn.activityId}/qr`, { method: "POST" });
+    if (qr.status === 200 && qr.data?.payload) {
+      await req("/api/auth/mock-login", { method: "POST", body: { kind: "organizer" } });
+      const scan = await req("/api/verification/scan", { method: "POST", body: { payload: qr.data.payload, deviceCode: devCode } });
+      check(`scan ${vn.title} -> VERIFIED`, scan.data?.status === "VERIFIED" || scan.data?.status === "DUPLICATE", `(${scan.data?.status} · ${scan.data?.reason ?? ""})`);
+    } else {
+      check(`QR ${vn.title} dibuat (409 = sudah selesai)`, qr.status === 200 || qr.status === 409, `(${qr.status})`);
+    }
+  }
 }
 
 console.log("▶ 6. Feedback");
@@ -94,11 +109,12 @@ check("feedback duplikat ditolak", r.status === 409, `(${r.status})`);
 console.log("▶ 7. Kredensial");
 r = await req(`/api/events/${ev.id}/credential/claim`, { method: "POST" });
 check("klaim saat belum layak -> ELIGIBLE (atau sudah ISSUED)", r.data?.status === "ELIGIBLE" || r.data?.status === "ISSUED", `(${r.data?.status} · ${r.data?.message})`);
-// selesaikan 3 aktivitas tersisa utk memenuhi EVENT_COMPLETION
-const remaining = ev2.data.journey.nodes.filter((n) => !["Sandi Pusaka", "Tulis Harapan"].some((x) => n.title.includes(x)));
+// selesaikan aktivitas tersisa utk memenuhi EVENT_COMPLETION
+// (aktivitas QR_VERIFY sudah diselesaikan via scan panitia di step 5)
+const remaining = ev2.data.journey.nodes.filter((n) => !["Sandi Pusaka", "Tulis Harapan", "Menara Jam", "Rasa Legenda", "Panggung Keroncong"].some((x) => n.title.includes(x)));
 for (const n of remaining) {
   r = await req(`/api/activities/${n.activityId}/complete`, { method: "POST", body: { method: "AUTO", data: { via: "e2e" } } });
-  if (r.data?.message !== "COMPLETED" && r.data?.message !== "ALREADY_COMPLETED") {
+  if (r.data?.message !== "COMPLETED" && r.data?.message !== "ALREADY_COMPLETED" && r.status !== 403) {
     console.log(`     ⚠ aktivitas ${n.title}: ${r.data?.message ?? r.status}`);
   }
 }

@@ -21,10 +21,11 @@ export interface QrPayload {
 
 export async function createQrSession(activityId: string, userId: string, eventId: string) {
   const nonce = randomUUID();
+  const sid = randomUUID(); // dipakai sebagai id baris DB DAN payload.sid (harus sama!)
   const expiresAt = new Date(Date.now() + QR_TTL_SECONDS * 1000);
   const payload: QrPayload = {
     v: 1,
-    sid: randomUUID(),
+    sid,
     nonce,
     aid: activityId,
     eid: eventId,
@@ -32,7 +33,7 @@ export async function createQrSession(activityId: string, userId: string, eventI
     exp: expiresAt.getTime(),
   };
   await prisma.qrSession.create({
-    data: { activityId, eventId, userId, nonce, payload: JSON.stringify(payload), expiresAt },
+    data: { id: sid, activityId, eventId, userId, nonce, payload: JSON.stringify(payload), expiresAt },
   });
   return { payload, expiresAt };
 }

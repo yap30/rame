@@ -59,6 +59,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
     const msg = err instanceof Error ? err.message : "INTERNAL";
     if (msg === "ACTIVITY_NOT_OPEN") return apiError("Aktivitas belum dibuka.", "ACTIVITY_NOT_OPEN", 403);
     if (msg === "ACTIVITY_CLOSED") return apiError("Aktivitas sudah ditutup.", "ACTIVITY_CLOSED", 403);
+    if (msg === "VERIFICATION_REQUIRED") {
+      return apiError("Aktivitas ini perlu diverifikasi panitia. Tunjukkan QR-mu ke panitia.", "VERIFICATION_REQUIRED", 403);
+    }
     throw err;
   }
 }

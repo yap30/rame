@@ -41,6 +41,12 @@ export async function completeActivity(input: CompleteActivityInput): Promise<Co
   if (!activity) throw new Error("ACTIVITY_NOT_FOUND");
   if (activity.eventId !== input.eventId) throw new Error("EVENT_MISMATCH");
 
+  // aktivitas dengan verifikasi panitia: HANYA jalur scan (QR_VERIFY) yang boleh
+  // menyelesaikan — partisipan tidak bisa self-complete (blueprint: verifikasi).
+  if (activity.verificationRequired && input.method !== "QR_VERIFY") {
+    throw new Error("VERIFICATION_REQUIRED");
+  }
+
   // kebijakan pengulangan
   if (!activity.repeatable) {
     const done = await prisma.activityCompletion.findFirst({

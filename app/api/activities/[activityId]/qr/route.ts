@@ -37,5 +37,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
     color: { dark: "#1e3a34", light: "#ffffff" },
   });
 
-  return Response.json({ qr: dataUrl, expiresAt, ttlSeconds: Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 1000)) });
+  return Response.json({
+    qr: dataUrl,
+    payload: JSON.stringify(payload),
+    expiresAt,
+    ttlSeconds: Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 1000)),
+  });
 }
